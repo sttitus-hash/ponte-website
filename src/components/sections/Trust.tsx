@@ -65,7 +65,7 @@ export function Trust() {
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-black" />
         </div>
 
-        <div className="relative px-gutter pb-16 pt-24 lg:grid lg:h-full lg:grid-cols-[537px_1fr] lg:grid-rows-[auto_1fr] lg:gap-x-[222px] lg:gap-y-0 lg:pb-[118px] lg:pt-[118px]">
+        <div className="relative px-gutter pb-16 pt-24 lg:grid lg:h-full lg:grid-cols-[minmax(420px,537px)_1fr] lg:grid-rows-[auto_1fr] lg:gap-x-[clamp(48px,13.9vw,222px)] lg:gap-y-0 lg:pb-[clamp(48px,13vh,118px)] lg:pt-[clamp(56px,13vh,118px)]">
           <RevealLines
             id="trust-title"
             as="h2"
@@ -194,7 +194,7 @@ function PanelContent({ index, stacked }: { index: number; stacked?: boolean }) 
       <div className="flex flex-1 flex-col lg:pr-6">
         <div className="flex items-start justify-between">
           <span className="text-dot-66 text-ink">0{index + 1}</span>
-          <span className="text-mono-12 pr-[7px] pt-[8px] text-olive">0{index + 1} / 04</span>
+          <span className="text-mono-12 whitespace-nowrap pr-[7px] pt-[8px] text-olive">0{index + 1} / 04</span>
         </div>
 
         {stacked ? <Illustration kind={tab.illustration} chips={tab.chips} className="mt-6" /> : null}
@@ -214,7 +214,7 @@ function PanelContent({ index, stacked }: { index: number; stacked?: boolean }) 
         </div>
       </div>
 
-      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} className="w-[348px] shrink-0" />}
+      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} className="w-[clamp(240px,45%,348px)] shrink-0" />}
     </div>
   );
 }
