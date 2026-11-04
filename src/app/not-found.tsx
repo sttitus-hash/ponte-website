@@ -5,7 +5,7 @@ import { asset } from "@/lib/asset";
 /** 404 — "This bridge leads nowhere." with the official black-hole shader behind it. */
 export default function NotFound() {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-5 text-center text-white">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-5 text-center text-white lg:mb-[32vh]">
       <div aria-hidden="true" className="absolute inset-0">
         <BlackHole />
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { mountLightBridge, type LightBridgeHandle } from "@/lib/lightBridge";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
@@ -31,44 +31,47 @@ export function LightBridge({
   posterClassName = "object-cover object-[50%_35%]",
   priority,
 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    let handle: LightBridgeHandle | null = null;
-    try {
-      handle = mountLightBridge(canvas, { params, reveal, still: reduce, onReady: () => setReady(true) });
-    } catch {
-      handle = null;
-    }
-    if (!handle) {
-      setFailed(true);
-      return;
-    }
-    const h = handle;
-    let visible = false;
-    const sync = () => h.setPlaying(visible && document.visibilityState === "visible");
-    const io = new IntersectionObserver(
-      (entries) => {
-        visible = entries.some((e) => e.isIntersecting);
-        sync();
-      },
-      { threshold: 0 },
-    );
-    io.observe(canvas);
-    document.addEventListener("visibilitychange", sync);
-    return () => {
-      io.disconnect();
-      document.removeEventListener("visibilitychange", sync);
-      h.destroy();
-    };
+  // Callback ref (with cleanup) rather than useEffect: it re-runs whenever React hands us a
+  // new <canvas>, including after a hydration-mismatch recovery that swaps the DOM node.
+  const attach = useCallback(
+    (canvas: HTMLCanvasElement | null) => {
+      if (!canvas) return;
+      let handle: LightBridgeHandle | null = null;
+      try {
+        handle = mountLightBridge(canvas, { params, reveal, still: reduce, onReady: () => setReady(true) });
+      } catch {
+        handle = null;
+      }
+      if (!handle) {
+        setFailed(true);
+        return;
+      }
+      const h = handle;
+      let visible = false;
+      const sync = () => h.setPlaying(visible && document.visibilityState === "visible");
+      const io = new IntersectionObserver(
+        (entries) => {
+          visible = entries.some((e) => e.isIntersecting);
+          sync();
+        },
+        { threshold: 0 },
+      );
+      io.observe(canvas);
+      document.addEventListener("visibilitychange", sync);
+      return () => {
+        io.disconnect();
+        document.removeEventListener("visibilitychange", sync);
+        h.destroy();
+      };
+    },
     // params are static per mount site
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduce, reveal]);
+    [reduce, reveal],
+  );
 
   return (
     <div className={`overflow-hidden bg-[#050807] ${className}`} aria-hidden="true">
@@ -77,7 +80,7 @@ export function LightBridge({
       )}
       {failed ? null : (
         <canvas
-          ref={canvasRef}
+          ref={attach}
           className={`absolute inset-0 block h-full w-full transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`}
         />
       )}

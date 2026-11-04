@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { AnimationItem } from "lottie-web";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
@@ -35,75 +35,77 @@ export function Lottie({
   label,
   tint = false,
 }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
   const animRef = useRef<AnimationItem | null>(null);
   const reduce = useReducedMotion();
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    const container = ref.current;
-    if (!container) return;
-    let cancelled = false;
-    let observer: IntersectionObserver | null = null;
+  // Callback ref with cleanup: re-runs if React hands us a new node (hydration recovery).
+  const attach = useCallback(
+    (container: HTMLDivElement | null) => {
+      if (!container) return;
+      let cancelled = false;
+      let observer: IntersectionObserver | null = null;
 
-    (async () => {
-      const [{ default: lottie }, res] = await Promise.all([
-        import("lottie-web/build/player/lottie_light"),
-        fetch(asset(src)),
-      ]);
-      if (cancelled) return;
-      const animationData = await res.json();
-      if (cancelled) return;
-      const anim = lottie.loadAnimation({
-        container,
-        renderer: "svg",
-        loop,
-        autoplay: false,
-        animationData,
-        rendererSettings: { preserveAspectRatio: "xMidYMid meet", progressiveLoad: true },
-      });
-      animRef.current = anim;
-      setReady(true);
+      (async () => {
+        const [{ default: lottie }, res] = await Promise.all([
+          import("lottie-web/build/player/lottie_light"),
+          fetch(asset(src)),
+        ]);
+        if (cancelled) return;
+        const animationData = await res.json();
+        if (cancelled) return;
+        const anim = lottie.loadAnimation({
+          container,
+          renderer: "svg",
+          loop,
+          autoplay: false,
+          animationData,
+          rendererSettings: { preserveAspectRatio: "xMidYMid meet", progressiveLoad: true },
+        });
+        animRef.current = anim;
+        setReady(true);
 
-      if (reduce) {
-        const frame =
-          reducedMotionFrame === "last"
-            ? anim.totalFrames - 1
-            : reducedMotionFrame === "first"
-              ? 0
-              : reducedMotionFrame <= 1
-                ? Math.round(reducedMotionFrame * (anim.totalFrames - 1))
-                : reducedMotionFrame;
-        anim.goToAndStop(frame, true);
-        return;
-      }
-      if (!playWhenVisible) {
-        anim.play();
-        return;
-      }
-      observer = new IntersectionObserver(
-        (entries) => {
-          for (const e of entries) {
-            if (e.isIntersecting) anim.play();
-            else anim.pause();
-          }
-        },
-        { threshold: 0.15 },
-      );
-      observer.observe(container);
-    })();
+        if (reduce) {
+          const frame =
+            reducedMotionFrame === "last"
+              ? anim.totalFrames - 1
+              : reducedMotionFrame === "first"
+                ? 0
+                : reducedMotionFrame <= 1
+                  ? Math.round(reducedMotionFrame * (anim.totalFrames - 1))
+                  : reducedMotionFrame;
+          anim.goToAndStop(frame, true);
+          return;
+        }
+        if (!playWhenVisible) {
+          anim.play();
+          return;
+        }
+        observer = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) anim.play();
+              else anim.pause();
+            }
+          },
+          { threshold: 0.15 },
+        );
+        observer.observe(container);
+      })();
 
-    return () => {
-      cancelled = true;
-      observer?.disconnect();
-      animRef.current?.destroy();
-      animRef.current = null;
-    };
-  }, [src, loop, playWhenVisible, reduce, reducedMotionFrame]);
+      return () => {
+        cancelled = true;
+        observer?.disconnect();
+        animRef.current?.destroy();
+        animRef.current = null;
+      };
+    },
+    [src, loop, playWhenVisible, reduce, reducedMotionFrame],
+  );
 
   return (
     <div
-      ref={ref}
+      ref={attach}
       className={`${tint ? "lottie-tint " : ""}${className ?? ""}`}
       role={label ? "img" : undefined}
       aria-label={label}
