@@ -10,7 +10,7 @@ Official marketing site for Ponte. Implemented from the Figma design (`Ponte —
 | Language     | TypeScript 5                                                  |
 | Styling      | Tailwind CSS 4 — design tokens live in `src/app/globals.css`  |
 | Motion       | `motion` (Motion for React) — scroll-linked + in-view         |
-| Fonts        | Geist Mono (bundled); Clash Grotesk / At Aero / Ponte Dot via `public/fonts` |
+| Fonts        | Geist Mono / Geist Sans (npm); Clash Grotesk + Ponte Dot from an encrypted private bundle (see Fonts) |
 | Hosting      | Netlify (`netlify.toml`, `@netlify/plugin-nextjs`)            |
 
 ## Getting started
@@ -54,9 +54,36 @@ invented URL ever ships. `NEXT_PUBLIC_SITE_URL` drives canonical/OG/sitemap/robo
 
 ## Fonts
 
-The design uses three licensed typefaces that are **not** in this repository. Add the `.woff2`
-files listed in `public/fonts/README.md`; `src/app/fonts.css` already declares them and the site
-falls back to system fonts until they exist.
+| Family | Weight(s) | Used for | Licence | How it ships |
+| --- | --- | --- | --- | --- |
+| Clash Grotesk | 400 (500 in mockups) | Headings | ITF Free Font License — self-hosting on Ponte's own site permitted, redistribution and format conversion not | Private font bundle, installed at build time |
+| Ponte Dot / Ponte Dot Mono | 400 | Display numerals (`2022`, `01`, `1/4`, `$2.3M+`) | Ponte's own typeface (fsType 0) | Private font bundle, installed at build time |
+| Geist Mono | 400 / 500 | Buttons, nav, tags, labels | SIL OFL | `geist` npm package |
+| At Aero (Retina 350 / Light 300) | | Body copy | Arillatype.Studio EULA — the archive provided is marked "Free for Personal Use" and the OTFs are flagged *preview & print only* (fsType 4), so it is **not** web-embedded until a commercial web licence is confirmed | `public/fonts/at-aero.css` is linked automatically once licensed files are added to the bundle; until then body copy uses Geist Sans |
+
+Font files are deliberately **not committed** to this public repository (the Clash Grotesk licence
+forbids redistribution). `npm run build` runs `scripts/prepare-fonts.mjs`, which installs the
+unmodified official `.woff2` files into `public/fonts/` (git-ignored) from the build environment:
+
+- `FONTS_BUNDLE_B64` — base64 of `fonts.tar.gz` as a secret Netlify build variable (split into
+  `FONTS_BUNDLE_B64_1`, `_2`, … when a single value is too long), or
+- `FONTS_KEY` + a local, git-ignored `assets/fonts.enc` (AES-256-GCM), or
+- `FONTS_ARCHIVE_URL` (+ optional `FONTS_ARCHIVE_TOKEN`) pointing at a private copy.
+
+Without any of these the build still succeeds and the fallback stacks apply.
+
+## Brand animations
+
+- **Light Bridge** (`src/lib/lightBridge.ts`, `<LightBridge>`): the designer's WebGL shader
+  (`ponte-light-bridge-green.html`, "Hero" preset) replaces the video-frame fills behind the hero,
+  the trust section (turned on its side, as in Figma) and the final CTA. It renders only while on
+  screen, pauses in hidden tabs, draws a single still frame under `prefers-reduced-motion`, and
+  falls back to `public/images/rays-poster.png` without WebGL.
+- **Black hole** (`src/lib/blackHole.ts`, `<BlackHole>`): the designer's WebGL piece on the 404 page
+  ("Ponte" preset, portal layout, cursor interaction; quarter speed under reduced motion).
+- **Lottie** (`public/animations/*.json`, `<Lottie>`): the official line drawings — rings, spiral,
+  circle and support in the Trust panels, spring (escrow loops) on the About card — played with
+  lottie-web's light SVG player, only while visible; frozen on their final frame under reduced motion.
 
 ## Motion system
 

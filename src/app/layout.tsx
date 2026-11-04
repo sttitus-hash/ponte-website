@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { site } from "@/lib/site";
@@ -47,9 +50,18 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/** At Aero is only linked when its licensed files were installed at build time. */
+const hasAtAero = existsSync(join(process.cwd(), "public", "fonts", "AtAero-Retina.woff2"));
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistMono.variable} h-full`}>
+    <html lang="en" className={`${GeistMono.variable} ${GeistSans.variable} h-full`}>
+      {hasAtAero ? (
+        <head>
+          {/* eslint-disable-next-line @next/next/no-css-tags -- licensed font CSS lives outside the bundle on purpose */}
+          <link rel="stylesheet" href="/fonts/at-aero.css" />
+        </head>
+      ) : null}
       <body className="flex min-h-full flex-col">
         <a
           href="#main"

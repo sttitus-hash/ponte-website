@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/prepare-fonts.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "fonts": "node scripts/prepare-fonts.mjs"
   },
   "dependencies": {
     "geist": "^1.9.1",
+    "lottie-web": "^5.13.0",
     "motion": "^14.9.1",
     "next": "16.4.5",
     "react": "19.3.0",

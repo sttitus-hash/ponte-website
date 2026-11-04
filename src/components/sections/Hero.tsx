@@ -11,10 +11,11 @@ import { ease } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
+import { LightBridge } from "@/components/ui/LightBridge";
 
 /**
- * 01 Hero — pinned for ~1.6 viewports on desktop. While pinned: the rays
- * backdrop drifts slower than the page (parallax), the copy settles upward
+ * 01 Hero — pinned for ~1.6 viewports on desktop. While pinned: the Light Bridge
+ * shader backdrop (Figma "videoframe" fill) drifts slower than the page (parallax), the copy settles upward
  * and fades, and the device mockup rises from below the fold to take over
  * the frame. On mobile the section is a plain stacked layout.
  */
@@ -49,18 +50,7 @@ export function Hero() {
           className="absolute inset-0 will-change-transform"
           style={{ y: bgY, opacity: bgOpacity }}
         >
-          <Image
-            src={asset("/images/rays-poster.png")}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[50%_35%]"
-          />
-          {/* blurred ellipses (forest / teal) and vignette from the design */}
-          <div className="absolute inset-0 bg-[radial-gradient(60%_55%_at_50%_30%,rgba(25,78,73,0.35),transparent_70%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(80%_70%_at_50%_15%,transparent_30%,rgba(0,0,0,0.75)_100%)]" />
-          <div className="absolute inset-0 bg-black/30" />
+          <LightBridge className="absolute inset-0" priority />
         </motion.div>
 
         {/* Copy ---------------------------------------------------------- */}

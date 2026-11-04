@@ -1,18 +1,24 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useCallback, useRef, useState } from "react";
-import { ChevronSmall, IlloTrustLens, IlloTrustRings } from "@/components/ui/icons";
+import { ChevronSmall } from "@/components/ui/icons";
+import { LightBridge } from "@/components/ui/LightBridge";
+import { Lottie } from "@/components/ui/Lottie";
 import { DotChip } from "@/components/ui/Primitives";
 import { Reveal, RevealLines } from "@/components/ui/Reveal";
 import { trust } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
-import { asset } from "@/lib/asset";
 
 const tabs = trust.tabs;
+const LOTTIE: Record<string, string> = {
+  rings: "/animations/rings.json",
+  spiral: "/animations/spiral.json",
+  lens: "/animations/circle.json",
+  support: "/animations/support.json",
+};
 const actionHref: Record<number, string> = { 0: links.app, 1: links.app, 2: links.app, 3: links.support };
 
 /**
@@ -50,16 +56,12 @@ export function Trust() {
       className="relative bg-black lg:h-[400vh]"
     >
       <div className="relative overflow-hidden lg:sticky lg:top-0 lg:h-screen">
-        {/* Backdrop: rays, flowing horizontally */}
+        {/* Backdrop: the Light Bridge shader turned on its side (Figma: rotated video frame) */}
         <div aria-hidden="true" className="absolute inset-0">
-          <Image
-            src={asset("/images/rays-poster.png")}
-            alt=""
-            fill
-            sizes="100vw"
-            className="rotate-90 scale-[1.9] object-cover opacity-80"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.35)_45%,rgba(0,0,0,0.55)_100%)]" />
+          <div className="absolute left-1/2 top-1/2 h-[100vw] w-[100vh] min-h-[1200px] min-w-[1000px] -translate-x-1/2 -translate-y-1/2 rotate-90 scale-[1.15]">
+            <LightBridge className="absolute inset-0" posterClassName="object-cover object-[50%_35%]" />
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.2)_45%,rgba(0,0,0,0.4)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-black" />
         </div>
 
@@ -228,17 +230,9 @@ function Illustration({
 }) {
   return (
     <div className={`relative flex flex-col justify-between rounded-panel bg-lime-dim p-6 text-ink lg:min-h-[442px] ${className}`}>
-      <div className="flex flex-1 items-center justify-center py-4 lg:py-6">
-        <div className="w-full max-w-[280px]">
-          {kind === "rings" ? <IlloTrustRings className="h-auto w-full" /> : null}
-          {kind === "lens" ? <IlloTrustLens className="h-auto w-full" /> : null}
-          {kind === "spiral" ? (
-            <Image src={asset("/illustrations/trust-spiral.png")} alt="" width={578} height={596} sizes="280px" className="h-auto w-full" />
-          ) : null}
-          {kind === "support" ? (
-            <Image src={asset("/illustrations/trust-support.png")} alt="" width={578} height={616} sizes="280px" className="h-auto w-full" />
-          ) : null}
-        </div>
+      <div className="flex flex-1 items-center justify-center py-2">
+        {/* Official Lottie line drawings (Animations / Shaders): rings, spiral, circle, support */}
+        <Lottie src={LOTTIE[kind] ?? LOTTIE.rings} className="h-[240px] w-full max-w-[300px] lg:h-[262px]" />
       </div>
       <ul className="flex flex-col items-start gap-2">
         {chips.map((chip) => (

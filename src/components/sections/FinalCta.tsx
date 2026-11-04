@@ -10,6 +10,7 @@ import { finalCta } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { LightBridge } from "@/components/ui/LightBridge";
 
 /**
  * 08b Final CTA — full-bleed lime panel with four "routes" that draw toward the
@@ -37,9 +38,11 @@ export function FinalCta() {
       aria-labelledby="cta-title"
       className="relative bg-black lg:h-[200vh]"
     >
-      {/* Animated gradient revealed as the panel shrinks (replaces the Figma video fill) */}
+      {/* Animated gradient revealed as the panel shrinks: the Light Bridge shader (Figma video fill) */}
       <div aria-hidden="true" className="absolute inset-0 hidden overflow-hidden lg:block">
-        <div className="aurora" />
+        <div className="sticky top-0 h-screen">
+          <LightBridge className="absolute inset-0" />
+        </div>
       </div>
 
       <div className="relative lg:sticky lg:top-0 lg:z-10 lg:h-screen lg:overflow-hidden">

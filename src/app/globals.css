@@ -27,8 +27,8 @@
   --color-cream-warm: #f1eee5;
   --color-glass-stroke: #606060;
 
-  --font-display: "Clash Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-body: "At Aero", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Clash Grotesk", var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: "At Aero", var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-dot: "Ponte Dot", var(--font-geist-mono), ui-monospace, monospace;
 
@@ -137,7 +137,7 @@
 
 @utility text-body-l {
   font-family: var(--font-body);
-  font-weight: 400;
+  font-weight: 350;
   font-size: 1.25rem;
   line-height: 1.35;
 }
@@ -243,36 +243,14 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Animated gradient (Final CTA backdrop — replaces the Figma video fill)
+   Lottie (official brand animations) — optional recolouring to currentColor
    --------------------------------------------------------------------------- */
-@keyframes aurora-drift {
-  0% {
-    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
-  }
-  50% {
-    transform: translate3d(6%, 5%, 0) rotate(8deg) scale(1.15);
-  }
-  100% {
-    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
-  }
+.lottie-tint svg path[stroke]:not([stroke="none"]) {
+  stroke: currentColor;
 }
-
-.aurora {
-  position: absolute;
-  inset: -20%;
-  background:
-    radial-gradient(40% 50% at 30% 30%, rgba(25, 78, 73, 0.9), transparent 70%),
-    radial-gradient(35% 45% at 70% 65%, rgba(23, 59, 47, 0.95), transparent 70%),
-    radial-gradient(30% 35% at 60% 20%, rgba(232, 238, 129, 0.16), transparent 70%),
-    #000;
-  animation: aurora-drift 22s ease-in-out infinite;
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aurora {
-    animation: none;
-  }
+.lottie-tint svg path[fill]:not([fill="none"]),
+.lottie-tint svg rect[fill]:not([fill="none"]) {
+  fill: currentColor;
 }
 
 /* ---------------------------------------------------------------------------

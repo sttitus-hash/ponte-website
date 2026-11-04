@@ -1,7 +1,9 @@
 /*
-  Licensed brand typefaces. Files are NOT in the repo — see public/fonts/README.md.
-  Each declaration falls back gracefully (system sans / Geist Mono) until the files are added.
+  Brand typefaces, self-hosted from /public/fonts (installed at build time by scripts/prepare-fonts.mjs).
+  Each family degrades to the fallback stack declared in globals.css until its file is present.
 */
+
+/* Clash Grotesk — Indian Type Foundry (ITF Free Font License, self-hosting permitted) */
 @font-face {
   font-family: "Clash Grotesk";
   src: url("/fonts/ClashGrotesk-Regular.woff2") format("woff2");
@@ -9,26 +11,28 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
-  font-family: "At Aero";
-  src: url("/fonts/AtAero-Retina.woff2") format("woff2");
+  font-family: "Clash Grotesk";
+  src: url("/fonts/ClashGrotesk-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* At Aero (Arillatype.Studio) is declared in public/fonts/at-aero.css, linked from layout.tsx only
+   when the licensed files are present — see public/fonts/README.md. */
+
+/* Ponte Dot — Ponte's dot-matrix display face (caps-only; years, counters, step numbers) */
+@font-face {
+  font-family: "Ponte Dot";
+  src: url("/fonts/PonteDot-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
-  font-family: "At Aero";
-  src: url("/fonts/AtAero-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Ponte Dot";
-  src: url("/fonts/PonteDot-Regular.woff2") format("woff2");
+  font-family: "Ponte Dot Mono";
+  src: url("/fonts/PonteDotMono-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
