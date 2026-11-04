@@ -124,7 +124,7 @@ function SlideCard({ index }: { index: number }) {
         </AnimatePresence>
       </div>
 
-      <div className="relative mx-auto flex w-[56%] max-w-[424px] flex-1 items-center justify-center py-6">
+      <div className="relative mx-auto flex w-[64%] max-w-[424px] flex-1 items-center justify-center py-6">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`img-${index}`}

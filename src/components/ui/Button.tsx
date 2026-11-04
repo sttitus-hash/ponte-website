@@ -15,6 +15,8 @@ type ButtonProps = {
   leadingIcon?: ReactNode;
   /** Show the trailing chevron circle. Off for store buttons. */
   chevron?: boolean;
+  /** Replace the chevron inside the trailing circle with a static icon (WhatsApp button). */
+  circleIcon?: ReactNode;
   children: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement>;
@@ -42,6 +44,7 @@ export function Button({
   variant = "lime",
   leadingIcon,
   chevron = true,
+  circleIcon,
   children,
   className = "",
   ...rest
@@ -64,7 +67,16 @@ export function Button({
         </span>
       ) : null}
       <span className="pt-px">{children}</span>
-      {!chevron ? null : (
+      {!chevron ? null : circleIcon ? (
+        <motion.span
+          aria-hidden="true"
+          className={`relative flex size-[47px] items-center justify-center overflow-hidden rounded-full ${circle[variant]}`}
+          variants={{ hover: { x: 2 } }}
+          transition={springSoft}
+        >
+          {circleIcon}
+        </motion.span>
+      ) : (
         <motion.span
           aria-hidden="true"
           className={`relative flex size-[47px] items-center justify-center overflow-hidden rounded-full ${circle[variant]}`}

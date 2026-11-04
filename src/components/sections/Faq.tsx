@@ -69,7 +69,7 @@ export function Faq() {
 
       {/* Rows */}
       <motion.ol
-        className="mt-16 border-t border-divider lg:mt-[190px]"
+        className="mt-16 border-t border-divider lg:mt-[125px]"
         initial={reduce ? false : "hidden"}
         whileInView="show"
         viewport={viewportOnce}

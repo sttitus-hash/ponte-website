@@ -227,7 +227,7 @@ function DesktopScreen({
         </motion.p>
         <motion.div variants={item} className="mt-[46px]">
           {isWA ? (
-            <Button href={screen.href} variant="ink" leadingIcon={<Whatsapp className="size-[18px]" />} chevron={false}>
+            <Button href={screen.href} variant="ink" circleIcon={<Whatsapp className="size-[18px]" />}>
               {screen.cta}
             </Button>
           ) : (
@@ -272,9 +272,11 @@ function DesktopScreen({
 /* -------------------------------------------------------------------------- */
 
 function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; reduce: boolean }) {
+  // Under reduced motion the pieces must still be driven to their resting state: `reduce`
+  // is false during hydration, so the hidden `initial` pose has already been applied.
   const float = (delay: number) =>
     reduce
-      ? {}
+      ? { animate: { opacity: 1, y: 0, scale: 1 }, transition: { duration: 0 } }
       : {
           initial: { opacity: 0, y: 30, scale: 0.96 },
           animate: active ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.96 },
@@ -444,7 +446,7 @@ function MobileScreen({ screen, withId }: { screen: Screen; withId: boolean }) {
       <Reveal className="mt-12">
         <Button
           href={screen.href}
-          leadingIcon={isWA ? <Whatsapp className="size-[18px]" /> : undefined}
+          circleIcon={isWA ? <Whatsapp className="size-[18px]" /> : undefined}
           className="w-full justify-between"
         >
           {screen.cta}

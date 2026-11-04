@@ -70,14 +70,21 @@ export function Story() {
           else if (info.offset.x > 60) go(index - 1);
         }}
       >
-        <Image
-          src={asset("/images/story-hikers.png")}
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[50%_60%] lg:object-[50%_55%]"
-        />
-        <div className="absolute inset-0 bg-forest mix-blend-multiply opacity-90" />
+        {/* Figma: 2116x1406 photo placed at (-116,-369) in the 1600x900 frame, under a forest
+            layer in "darken" (sky = forest, silhouettes stay black). Mobile keeps a cover crop. */}
+        <div className="absolute inset-0 overflow-hidden">
+          <Image
+            src={asset("/images/story-hikers.png")}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover object-[50%_60%] lg:hidden"
+          />
+          <div className="absolute hidden lg:block" style={{ left: "-7.25%", top: "-41%", width: "132.25%" }}>
+            <Image src={asset("/images/story-hikers.png")} alt="" width={2116} height={1406} sizes="135vw" className="h-auto w-full" />
+          </div>
+        </div>
+        <div className="absolute inset-0 bg-forest mix-blend-darken" />
         <div className="absolute inset-y-0 left-0 w-[56%] bg-gradient-to-r from-black/70 to-transparent" />
         <div className="absolute inset-y-0 right-0 w-[56%] bg-gradient-to-l from-black/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-b from-transparent to-black/85" />

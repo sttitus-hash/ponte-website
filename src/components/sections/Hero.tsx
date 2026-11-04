@@ -77,7 +77,7 @@ export function Hero() {
             immediate
             index={3}
             as="p"
-            className="mt-5 max-w-[315px] text-body-s text-white/85 lg:mt-[53px] lg:max-w-[490px] lg:text-body-l lg:text-white/90"
+            className="mt-5 max-w-[315px] text-body-s text-white/85 lg:mt-[31px] lg:max-w-[490px] lg:text-body-l lg:text-white/90"
           >
             {hero.body}
           </Reveal>
