@@ -10,6 +10,7 @@ import { faq } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 /**
  * 08 FAQ — accessible accordion (button + region, aria-expanded / aria-controls,
@@ -180,7 +181,7 @@ function OtcTile() {
       <span className="absolute left-[25px] top-[25px] text-mono-12 text-mint/80">OTC desk · Ponte</span>
       <div className="absolute left-[50px] top-[104px] w-[80%] overflow-hidden rounded-t-[36px]">
         <Image
-          src="/images/otc-phone-screen.png"
+          src={asset("/images/otc-phone-screen.png")}
           alt=""
           width={622}
           height={1392}

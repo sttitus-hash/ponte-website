@@ -8,6 +8,7 @@ import { Reveal, RevealLines } from "@/components/ui/Reveal";
 import { trackRecord } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 const slides = trackRecord.slides;
 
@@ -160,7 +161,7 @@ function SlideCard({ index }: { index: number }) {
             transition={{ duration: 0.55, ease: ease.out }}
           >
             <Image
-              src={slide.image}
+              src={asset(slide.image)}
               alt={slide.alt}
               width={848}
               height={822}

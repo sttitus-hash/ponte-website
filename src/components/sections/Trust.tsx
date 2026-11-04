@@ -10,6 +10,7 @@ import { trust } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 const tabs = trust.tabs;
 const actionHref: Record<number, string> = { 0: links.app, 1: links.app, 2: links.app, 3: links.support };
@@ -52,7 +53,7 @@ export function Trust() {
         {/* Backdrop: rays, flowing horizontally */}
         <div aria-hidden="true" className="absolute inset-0">
           <Image
-            src="/images/rays-poster.png"
+            src={asset("/images/rays-poster.png")}
             alt=""
             fill
             sizes="100vw"
@@ -232,10 +233,10 @@ function Illustration({
           {kind === "rings" ? <IlloTrustRings className="h-auto w-full" /> : null}
           {kind === "lens" ? <IlloTrustLens className="h-auto w-full" /> : null}
           {kind === "spiral" ? (
-            <Image src="/illustrations/trust-spiral.png" alt="" width={578} height={596} sizes="280px" className="h-auto w-full" />
+            <Image src={asset("/illustrations/trust-spiral.png")} alt="" width={578} height={596} sizes="280px" className="h-auto w-full" />
           ) : null}
           {kind === "support" ? (
-            <Image src="/illustrations/trust-support.png" alt="" width={578} height={616} sizes="280px" className="h-auto w-full" />
+            <Image src={asset("/illustrations/trust-support.png")} alt="" width={578} height={616} sizes="280px" className="h-auto w-full" />
           ) : null}
         </div>
       </div>

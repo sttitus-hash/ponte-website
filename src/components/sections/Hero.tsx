@@ -10,6 +10,7 @@ import { hero } from "@/lib/content";
 import { ease } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 /**
  * 01 Hero — pinned for ~1.6 viewports on desktop. While pinned: the rays
@@ -49,7 +50,7 @@ export function Hero() {
           style={{ y: bgY, opacity: bgOpacity }}
         >
           <Image
-            src="/images/rays-poster.png"
+            src={asset("/images/rays-poster.png")}
             alt=""
             fill
             priority
@@ -110,7 +111,7 @@ export function Hero() {
           transition={{ duration: 1.1, ease: ease.out, delay: 0.5 }}
         >
           <Image
-            src="/images/hero-device.png"
+            src={asset("/images/hero-device.png")}
             alt="Ponte web app showing an OTC trade on a desktop display"
             width={1610}
             height={1498}
@@ -128,7 +129,7 @@ export function Hero() {
           transition={{ duration: 1, ease: ease.out, delay: 0.45 }}
         >
           <Image
-            src="/images/mobile-hero-phone.png"
+            src={asset("/images/mobile-hero-phone.png")}
             alt="Ponte mobile app showing P2P buy offers"
             width={512}
             height={1064}

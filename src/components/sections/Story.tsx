@@ -7,6 +7,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { story } from "@/lib/content";
 import { ease } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 const slides = story.slides;
 
@@ -70,7 +71,7 @@ export function Story() {
         }}
       >
         <Image
-          src="/images/story-hikers.png"
+          src={asset("/images/story-hikers.png")}
           alt=""
           fill
           sizes="100vw"

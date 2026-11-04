@@ -89,3 +89,9 @@ falls back to system fonts until they exist.
 - Video backgrounds (hero, trust, CTA gradient) are stills / CSS in this build; drop MP4/WebM in
   `public/video` and swap the `Image` backdrops for `<video>` when available.
 - Product mockups use `$PONTE` as a purely illustrative token in the trade demonstrations (edited from the Figma `$OWJ` assets); nothing on the site states or implies that a token has launched, is tradable or has a market price.
+
+## Static preview (GitHub Pages)
+
+`STATIC_EXPORT=1 BASE_PATH=/ponte-website NEXT_PUBLIC_BASE_PATH=/ponte-website NEXT_PUBLIC_SITE_URL=https://sttitus-hash.github.io/ponte-website npm run build`
+writes a fully static site to `out/`, which is published on the `gh-pages` branch. Netlify/production
+builds do not set these variables.

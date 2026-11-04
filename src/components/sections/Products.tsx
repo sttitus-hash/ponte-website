@@ -20,6 +20,7 @@ import { otc, p2p, whatsapp } from "@/lib/content";
 import { ease } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { asset } from "@/lib/asset";
 
 /* -------------------------------------------------------------------------- */
 /* Data                                                                        */
@@ -284,13 +285,13 @@ function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; red
     return (
       <div aria-hidden="true" className="absolute inset-0">
         <motion.div className="absolute left-[43%] top-[8.9%] w-[54.4%]" {...float(0.05)}>
-          <Image src="/images/p2p-phone.png" alt="" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
+          <Image src={asset("/images/p2p-phone.png")} alt="" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
         </motion.div>
         <motion.div className="absolute left-[40.75%] top-[18%] w-[16.9%]" {...float(0.25)}>
-          <Image src="/images/p2p-fee-takers.png" alt="" width={540} height={580} sizes="17vw" className="h-auto w-full" />
+          <Image src={asset("/images/p2p-fee-takers.png")} alt="" width={540} height={580} sizes="17vw" className="h-auto w-full" />
         </motion.div>
         <motion.div className="absolute left-[74.3%] top-[50.2%] w-[13.8%]" {...float(0.35)}>
-          <Image src="/images/p2p-fee-makers.png" alt="" width={442} height={476} sizes="14vw" className="h-auto w-full" />
+          <Image src={asset("/images/p2p-fee-makers.png")} alt="" width={442} height={476} sizes="14vw" className="h-auto w-full" />
         </motion.div>
       </div>
     );
@@ -299,17 +300,17 @@ function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; red
     return (
       <div aria-hidden="true" className="absolute inset-0">
         <motion.div className="absolute left-[3.2%] top-[6.6%] w-[66%]" {...float(0.05)}>
-          <Image src="/images/otc-hand.png" alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
+          <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
           {/* phone screen overlay, positioned relative to the hand image */}
           <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
-            <Image src="/images/otc-phone-screen.png" alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
+            <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
           </div>
         </motion.div>
         <motion.div className="absolute left-[5.4%] top-[21.9%] w-[20.75%]" {...float(0.25)}>
-          <Image src="/images/otc-card-quote.png" alt="" width={664} height={559} sizes="21vw" className="h-auto w-full" />
+          <Image src={asset("/images/otc-card-quote.png")} alt="" width={664} height={559} sizes="21vw" className="h-auto w-full" />
         </motion.div>
         <motion.div className="absolute left-[39%] top-[56.7%] w-[17%]" {...float(0.35)}>
-          <Image src="/images/otc-card-terms.png" alt="" width={547} height={460} sizes="17vw" className="h-auto w-full" />
+          <Image src={asset("/images/otc-card-terms.png")} alt="" width={547} height={460} sizes="17vw" className="h-auto w-full" />
         </motion.div>
       </div>
     );
@@ -317,10 +318,10 @@ function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; red
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <motion.div className="absolute left-[33.4%] top-[13.2%] w-[46%]" {...float(0.05)}>
-        <Image src="/images/wa-phone.png" alt="" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
+        <Image src={asset("/images/wa-phone.png")} alt="" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
       </motion.div>
       <motion.div className="absolute left-[25.3%] top-[43.7%] w-[15.7%]" {...float(0.25)}>
-        <Image src="/images/wa-fee-card.png" alt="" width={502} height={396} sizes="16vw" className="h-auto w-full" />
+        <Image src={asset("/images/wa-fee-card.png")} alt="" width={502} height={396} sizes="16vw" className="h-auto w-full" />
       </motion.div>
     </div>
   );
