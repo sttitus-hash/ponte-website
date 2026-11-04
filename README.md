@@ -65,9 +65,10 @@ Font files are deliberately **not committed** to this public repository (the Cla
 forbids redistribution). `npm run build` runs `scripts/prepare-fonts.mjs`, which installs the
 unmodified official `.woff2` files into `public/fonts/` (git-ignored) from the build environment:
 
-- `FONTS_BUNDLE_B64` — base64 of `fonts.tar.gz` as a secret Netlify build variable (split into
-  `FONTS_BUNDLE_B64_1`, `_2`, … when a single value is too long), or
-- `FONTS_KEY` + a local, git-ignored `assets/fonts.enc` (AES-256-GCM), or
+- `FONTS_KEY` — hex key that decrypts `assets/fonts.enc` (AES-256-GCM; the only font-related file in
+  the repo, and unusable without the key, which lives in Netlify's environment variables), or
+- `FONTS_BUNDLE_B64` — base64 of `fonts.tar.gz` as a build variable (split into `FONTS_BUNDLE_B64_1`,
+  `_2`, … when a single value is too long), or
 - `FONTS_ARCHIVE_URL` (+ optional `FONTS_ARCHIVE_TOKEN`) pointing at a private copy.
 
 Without any of these the build still succeeds and the fallback stacks apply.

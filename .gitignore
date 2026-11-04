@@ -53,5 +53,6 @@ AGENTS.md
 /public/fonts/*.md
 !/public/fonts/README.md
 
-# licensed font bundle stays out of the public repository (delivered via build environment)
-/assets/
+# assets/fonts.enc is an AES-256-GCM-encrypted font bundle (unusable without FONTS_KEY); plain font files never go here
+/assets/*
+!/assets/fonts.enc
