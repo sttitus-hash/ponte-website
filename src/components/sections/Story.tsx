@@ -59,17 +59,7 @@ export function Story() {
       className="relative overflow-hidden bg-forest text-cream"
     >
       {/* Backdrop ---------------------------------------------------------- */}
-      <motion.div
-        aria-hidden="true"
-        className="absolute inset-0"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.08}
-        onDragEnd={(_, info) => {
-          if (info.offset.x < -60) go(index + 1);
-          else if (info.offset.x > 60) go(index - 1);
-        }}
-      >
+      <motion.div aria-hidden="true" className="absolute inset-0">
         {/* Figma: 2116x1406 photo placed at (-116,-369) in the 1600x900 frame, under a forest
             layer in "darken" (sky = forest, silhouettes stay black). Mobile keeps a cover crop. */}
         <div className="absolute inset-0 overflow-hidden">
@@ -90,7 +80,18 @@ export function Story() {
         <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-b from-transparent to-black/85" />
       </motion.div>
 
-      <div className="relative flex min-h-[812px] flex-col px-gutter pb-10 pt-10 lg:h-[900px] lg:min-h-0">
+      {/* Swipe anywhere on the slide (Figma: "swipe or tap the arrows to switch steps") */}
+      <motion.div
+        className="relative flex min-h-[812px] flex-col px-gutter pb-10 pt-10 lg:h-[900px] lg:min-h-0"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0}
+        dragMomentum={false}
+        onDragEnd={(_, info) => {
+          if (info.offset.x < -60) go(index + 1);
+          else if (info.offset.x > 60) go(index - 1);
+        }}
+      >
         {/* Eyebrow */}
         <Reveal as="p" className="text-mono-16 text-mint">
           {story.eyebrow.map((l) => (
@@ -181,7 +182,7 @@ export function Story() {
           </div>
         </div>
 
-      </div>
+      </motion.div>
     </section>
   );
 }
