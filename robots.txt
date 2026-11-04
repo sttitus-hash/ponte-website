@@ -1,0 +1,4 @@
+User-Agent: *
+Allow: /
+
+Sitemap: https://sttitus-hash.github.io/ponte-website/sitemap.xml

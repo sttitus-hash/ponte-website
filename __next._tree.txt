@@ -1,0 +1,4 @@
+:HL["/ponte-website/_next/static/chunks/0sewet9dalbe7.css","style"]
+:HL["/ponte-website/_next/static/media/GeistMono_Variable.p.30453b9rv70y7.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+1:[["children",{"s":"__PAGE__","h":128}]]
+0:{"b":"p8KRLWCoBhV_cRSgfujbG","t":{"t":{"s":"","h":16,"c":"$Q1"}}}
