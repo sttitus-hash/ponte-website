@@ -1,0 +1,35 @@
+/*
+  Licensed brand typefaces. Files are NOT in the repo — see public/fonts/README.md.
+  Each declaration falls back gracefully (system sans / Geist Mono) until the files are added.
+*/
+@font-face {
+  font-family: "Clash Grotesk";
+  src: url("/fonts/ClashGrotesk-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "At Aero";
+  src: url("/fonts/AtAero-Retina.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "At Aero";
+  src: url("/fonts/AtAero-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ponte Dot";
+  src: url("/fonts/PonteDot-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

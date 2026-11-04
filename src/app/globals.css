@@ -1,0 +1,286 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+/* ---------------------------------------------------------------------------
+   Design tokens — lifted from the Figma Dev Handoff page (docs/figma-spec.md)
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-black: #000000;
+  --color-ink: #100f0f;
+  --color-near-black: #0a0a0a;
+  --color-card: #0c0c0c;
+  --color-card-stroke: #1f1f1f;
+  --color-divider: #2a2a2a;
+  --color-lime: #e8ee81;
+  --color-lime-dim: #dce277;
+  --color-lime-pale: #fdffdf;
+  --color-mint: #d8fdf1;
+  --color-forest: #173b2f;
+  --color-deep-teal: #194e49;
+  --color-moss: #2a4e42;
+  --color-grey: #8c8c8c;
+  --color-grey-dim: #6b6b6b;
+  --color-grey-dark: #3a3a3a;
+  --color-grey-mid: #545454;
+  --color-olive: #3a3d1e;
+  --color-cream: #f4f2ec;
+  --color-cream-warm: #f1eee5;
+  --color-glass-stroke: #606060;
+
+  --font-display: "Clash Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: "At Aero", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-dot: "Ponte Dot", var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-panel: 3px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    background: var(--color-black);
+    color: var(--color-cream);
+    font-family: var(--font-body);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: var(--color-lime);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Lime focus rings vanish on lime surfaces — use ink there. */
+  .on-lime :focus-visible {
+    outline-color: var(--color-ink);
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  img,
+  video,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Typography utilities (exact Figma styles)
+   --------------------------------------------------------------------------- */
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.75rem, 2rem + 3.3vw, 4.5rem); /* 44 → 72 */
+  line-height: 0.96;
+  letter-spacing: -0.028em;
+}
+
+@utility text-h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.25rem, 1.6rem + 2.5vw, 3.5rem); /* 36 → 56 */
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+@utility text-h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.875rem, 1.5rem + 1.25vw, 2.5rem); /* 30 → 40 */
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+@utility text-card-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.5rem, 1.25rem + 0.9vw, 2rem); /* 24 → 32 */
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+@utility text-tab-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+@utility text-body-l {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+@utility text-body-s {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.21;
+}
+
+@utility text-mono-16 {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+@utility text-mono-14 {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+@utility text-mono-13 {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+@utility text-mono-12 {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+@utility text-dot-88 {
+  font-family: var(--font-dot);
+  font-size: clamp(3.5rem, 2.5rem + 3vw, 5.5rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+@utility text-dot-66 {
+  font-family: var(--font-dot);
+  font-size: 4.125rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+@utility text-dot-51 {
+  font-family: var(--font-dot);
+  font-size: 3.1875rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+@utility text-dot-41 {
+  font-family: var(--font-dot);
+  font-size: 2.5625rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* Page gutter: 40px at 1600 canvas, scaling down on mobile */
+@utility px-gutter {
+  padding-inline: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+/* Soft white → grey gradient used on dark headings (Trust / Footer) */
+@utility text-gradient-light {
+  background: linear-gradient(180deg, #ffffff 0%, #bdbdbd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Lime → dim fade used on P2P/OTC feature titles */
+@utility text-gradient-lime {
+  background: linear-gradient(90deg, #e8ee81 0%, #e8ee81 55%, rgba(232, 238, 129, 0.55) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Pattern tile (diagonal hairlines) used on the lime product panels
+   --------------------------------------------------------------------------- */
+@utility bg-pattern-lines {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(16, 15, 15, 0.055) 0 1px,
+    transparent 1px 14px
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Animated gradient (Final CTA backdrop — replaces the Figma video fill)
+   --------------------------------------------------------------------------- */
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
+  }
+  50% {
+    transform: translate3d(6%, 5%, 0) rotate(8deg) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.05);
+  }
+}
+
+.aurora {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 50% at 30% 30%, rgba(25, 78, 73, 0.9), transparent 70%),
+    radial-gradient(35% 45% at 70% 65%, rgba(23, 59, 47, 0.95), transparent 70%),
+    radial-gradient(30% 35% at 60% 20%, rgba(232, 238, 129, 0.16), transparent 70%),
+    #000;
+  animation: aurora-drift 22s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Misc helpers
+   --------------------------------------------------------------------------- */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
