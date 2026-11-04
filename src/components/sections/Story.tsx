@@ -74,9 +74,9 @@ export function Story() {
           alt=""
           fill
           sizes="100vw"
-          className="object-cover object-[50%_60%] mix-blend-darken lg:object-[50%_55%]"
+          className="object-cover object-[50%_60%] lg:object-[50%_55%]"
         />
-        <div className="absolute inset-0 bg-forest mix-blend-darken" />
+        <div className="absolute inset-0 bg-forest mix-blend-multiply opacity-90" />
         <div className="absolute inset-y-0 left-0 w-[56%] bg-gradient-to-r from-black/70 to-transparent" />
         <div className="absolute inset-y-0 right-0 w-[56%] bg-gradient-to-l from-black/70 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-b from-transparent to-black/85" />
