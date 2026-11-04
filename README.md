@@ -88,4 +88,4 @@ falls back to system fonts until they exist.
 - Real URLs: web app, App Store, Google Play, WhatsApp assistant, support, legal pages, X, Telegram.
 - Video backgrounds (hero, trust, CTA gradient) are stills / CSS in this build; drop MP4/WebM in
   `public/video` and swap the `Image` backdrops for `<video>` when available.
-- Product mockups show the `$OWJ` token UI from the Figma assets.
+- Product mockups use `$PONTE` as a purely illustrative token in the trade demonstrations (edited from the Figma `$OWJ` assets); nothing on the site states or implies that a token has launched, is tradable or has a market price.

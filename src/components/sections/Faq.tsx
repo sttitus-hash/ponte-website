@@ -177,7 +177,7 @@ function OtcTile() {
       aria-hidden="true"
       className="relative aspect-[493/494] w-full max-w-[493px] overflow-hidden rounded-panel bg-forest lg:justify-self-end"
     >
-      <span className="absolute left-[25px] top-[25px] text-mono-12 text-mint/80">OTC desk · VetMe</span>
+      <span className="absolute left-[25px] top-[25px] text-mono-12 text-mint/80">OTC desk · Ponte</span>
       <div className="absolute left-[50px] top-[104px] w-[80%] overflow-hidden rounded-t-[36px]">
         <Image
           src="/images/otc-phone-screen.png"
