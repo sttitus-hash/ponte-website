@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { motion, useMotionValueEvent, useScroll, type MotionValue } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { ChevronSmall } from "@/components/ui/icons";
 import { LightBridge } from "@/components/ui/LightBridge";
@@ -11,6 +11,7 @@ import { trust } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { deckSlideCenter, useDeckPosition, useTextLayer } from "@/hooks/useSlideDeck";
 
 const tabs = trust.tabs;
 const LOTTIE: Record<string, string> = {
@@ -32,8 +33,10 @@ export function Trust() {
   const [active, setActive] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    const next = Math.min(tabs.length - 1, Math.max(0, Math.floor(v * tabs.length)));
+  // One continuous deck position; the panel layers are pure functions of it (see useSlideDeck).
+  const pos = useDeckPosition(scrollYProgress, tabs.length, reduce);
+  useMotionValueEvent(pos, "change", (v) => {
+    const next = Math.round(v);
     if (next !== active) setActive(next);
   });
 
@@ -43,7 +46,7 @@ export function Trust() {
     const rect = el.getBoundingClientRect();
     const top = rect.top + window.scrollY;
     const travel = el.offsetHeight - window.innerHeight;
-    const target = top + travel * ((i + 0.5) / tabs.length);
+    const target = top + travel * deckSlideCenter(i, tabs.length);
     window.scrollTo({ top: target, behavior: "smooth" });
     setActive(i);
   }, []);
@@ -53,7 +56,7 @@ export function Trust() {
       ref={ref}
       id="trust"
       aria-labelledby="trust-title"
-      className="relative bg-black lg:h-[400vh]"
+      className="relative bg-black lg:h-[340vh]"
     >
       <div className="relative overflow-hidden lg:sticky lg:top-0 lg:h-screen">
         {/* Backdrop: the Light Bridge shader turned on its side (Figma: rotated video frame) */}
@@ -150,18 +153,9 @@ export function Trust() {
             aria-labelledby={`trust-tab-${active}`}
             className="on-lime relative mt-6 hidden min-h-[480px] overflow-hidden rounded-panel bg-lime text-ink lg:mt-0 lg:block lg:self-end"
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={active}
-                className="absolute inset-0"
-                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
-                transition={{ duration: 0.45, ease: ease.out }}
-              >
-                <PanelContent index={active} />
-              </motion.div>
-            </AnimatePresence>
+            {tabs.map((tab, i) => (
+              <PanelLayer key={tab.title} pos={pos} i={i} reduce={reduce} current={i === active} />
+            ))}
           </div>
 
           {/* Mobile: stacked cards -------------------------------------- */}
@@ -169,13 +163,14 @@ export function Trust() {
             {tabs.map((tab, i) => (
               <motion.li
                 key={tab.title}
-                className="on-lime relative overflow-hidden rounded-panel bg-lime text-ink"
+                // Figma (mobile "trust" frame): cards alternate lime / mint down the stack.
+                className={`on-lime relative overflow-hidden rounded-panel text-ink ${i % 2 ? "bg-mint" : "bg-lime"}`}
                 initial={reduce ? false : { opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={viewportOnce}
                 transition={{ duration: 0.7, ease: ease.out }}
               >
-                <PanelContent index={i} stacked />
+                <PanelContent index={i} stacked tone={i % 2 ? "mint" : "lime"} />
               </motion.li>
             ))}
           </ol>
@@ -187,8 +182,25 @@ export function Trust() {
 
 /* -------------------------------------------------------------------------- */
 
-function PanelContent({ index, stacked }: { index: number; stacked?: boolean }) {
+/** One stacked panel; fades / drifts with the deck position instead of waiting on an exit animation. */
+function PanelLayer({ pos, i, reduce, current }: { pos: MotionValue<number>; i: number; reduce: boolean; current: boolean }) {
+  // text hand-over profile: the panels are mostly type, so they must not read as doubled mid-ramp
+  const style = useTextLayer(pos, i, reduce, 18);
+  return (
+    <motion.div
+      className={`absolute inset-0 ${current ? "" : "pointer-events-none"}`}
+      style={style}
+      aria-hidden={current ? undefined : true}
+    >
+      <PanelContent index={i} />
+    </motion.div>
+  );
+}
+
+function PanelContent({ index, stacked, tone = "lime" }: { index: number; stacked?: boolean; tone?: "lime" | "mint" }) {
   const tab = tabs[index];
+  const dim = tone === "mint" ? "bg-[#bfeedd]" : "bg-lime-dim";
+  const hover = tone === "mint" ? "hover:bg-[#aee5d1]" : "hover:bg-[#d2d86c]";
   return (
     <div className={`relative flex h-full flex-col ${stacked ? "p-5" : "p-[19px] pl-[25px]"} lg:flex-row`}>
       <div className="flex flex-1 flex-col lg:pr-6">
@@ -197,14 +209,14 @@ function PanelContent({ index, stacked }: { index: number; stacked?: boolean }) 
           <span className="text-mono-12 whitespace-nowrap pr-[7px] pt-[8px] text-olive">0{index + 1} / 04</span>
         </div>
 
-        {stacked ? <Illustration kind={tab.illustration} chips={tab.chips} className="mt-6" /> : null}
+        {stacked ? <Illustration kind={tab.illustration} chips={tab.chips} className={`mt-6 ${dim}`} /> : null}
 
         <div className="mt-auto pt-8">
           <h3 className="text-card-title max-w-[360px] text-ink">{tab.title}</h3>
           <p className="text-body-s mt-3 max-w-[360px] text-olive">{tab.body}</p>
           <a
             href={actionHref[index]}
-            className="mt-6 flex h-11 w-full max-w-[360px] items-center justify-between rounded-full bg-lime-dim pl-4 pr-1 text-mono-12 text-ink transition-colors duration-300 hover:bg-[#d2d86c]"
+            className={`mt-6 flex h-11 w-full max-w-[360px] items-center justify-between rounded-full ${dim} pl-4 pr-1 text-mono-12 text-ink transition-colors duration-300 ${hover}`}
           >
             {tab.action}
             <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-ink text-lime">
@@ -214,7 +226,7 @@ function PanelContent({ index, stacked }: { index: number; stacked?: boolean }) 
         </div>
       </div>
 
-      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} className="w-[clamp(240px,45%,348px)] shrink-0" />}
+      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} className="w-[clamp(240px,45%,348px)] shrink-0 bg-lime-dim" />}
     </div>
   );
 }
@@ -229,12 +241,13 @@ function Illustration({
   className?: string;
 }) {
   return (
-    <div className={`relative flex flex-col justify-between rounded-panel bg-lime-dim p-6 text-ink lg:min-h-[442px] ${className}`}>
+    <div className={`relative flex flex-col justify-between rounded-panel p-6 text-ink lg:min-h-[442px] ${className}`}>
       <div className="flex flex-1 items-center justify-center py-2">
         {/* Official Lottie line drawings (Animations / Shaders): rings, spiral, circle, support */}
         <Lottie src={LOTTIE[kind] ?? LOTTIE.rings} className="h-[240px] w-full max-w-[300px] lg:h-[262px]" />
       </div>
-      <ul className="flex flex-col items-start gap-2">
+      {/* Status chips are a desktop detail; the mobile Figma cards have none. */}
+      <ul className="hidden flex-col items-start gap-2 lg:flex">
         {chips.map((chip) => (
           <li key={chip}>
             <DotChip>{chip}</DotChip>

@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { site } from "@/lib/site";
+import "@fontsource/space-grotesk/300.css";
+import "@fontsource/space-grotesk/400.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

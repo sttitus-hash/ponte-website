@@ -47,7 +47,7 @@ export function Story() {
     initial: reduce ? { opacity: 0 } : { opacity: 0, y: 24 * dir },
     animate: { opacity: 1, y: 0 },
     exit: reduce ? { opacity: 0 } : { opacity: 0, y: -24 * dir },
-    transition: { duration: 0.5, ease: ease.out },
+    transition: { duration: 0.4, ease: ease.out },
   };
 
   return (
@@ -103,15 +103,15 @@ export function Story() {
 
         {/* Big word + counter */}
         <div
-          className="mt-auto flex items-end justify-between text-cream-warm lg:absolute lg:inset-x-[clamp(1rem,2.5vw,2.5rem)] lg:top-[376px] lg:mt-0"
+          className="relative mt-auto flex items-end justify-between text-cream-warm lg:absolute lg:inset-x-[clamp(1rem,2.5vw,2.5rem)] lg:top-[376px] lg:mt-0"
           aria-live="polite"
         >
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence mode="popLayout" initial={false}>
             <motion.span key={`w-${index}`} {...wordAnim} className="text-dot-88 block">
               {slide.word}
             </motion.span>
           </AnimatePresence>
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence mode="popLayout" initial={false}>
             <motion.span key={`c-${index}`} {...wordAnim} className="text-dot-88 block max-lg:text-[40px]">
               {index + 1}/{slides.length}
             </motion.span>
@@ -138,8 +138,8 @@ export function Story() {
           </div>
 
           <div>
-            <div className="min-h-[108px] lg:min-h-[81px]" aria-live="polite">
-              <AnimatePresence mode="wait" initial={false}>
+            <div className="relative min-h-[108px] lg:min-h-[81px]" aria-live="polite">
+              <AnimatePresence mode="popLayout" initial={false}>
                 <motion.p
                   key={`b-${index}`}
                   {...wordAnim}

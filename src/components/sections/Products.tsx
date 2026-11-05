@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
+import { motion, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import {
   Whatsapp,
 } from "@/components/ui/icons";
 import { Marker, Tag } from "@/components/ui/Primitives";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { Reveal, RevealGroup, RevealLines } from "@/components/ui/Reveal";
 import { otc, p2p, whatsapp } from "@/lib/content";
 import { ease } from "@/lib/motion";
@@ -54,9 +55,14 @@ const screens: Screen[] = [
 ];
 
 /** Horizontal offset of the 170%-wide composition inside the mobile panel. */
-const mobileOffset: Record<Screen["id"], string> = { p2p: "-42%", otc: "-18%", whatsapp: "-30%" };
+const mobileOffset: Record<Screen["id"], string> = { p2p: "-42%", otc: "-7%", whatsapp: "-30%" };
 
-/** Lime panel geometry per screen, in % of the 1600×900 stage. */
+/** Lime panel geometry per screen, as fractions of the 1600×900 stage (Figma frames). */
+const PANEL = {
+  p2p: { left: 0.333, top: 0, width: 0.734, height: 1.056 },
+  otc: { left: -0.067, top: -0.034, width: 0.734, height: 1.056 },
+  whatsapp: { left: 0.0144, top: 0.0244, width: 0.971, height: 0.949 },
+} as const;
 const panel = {
   p2p: { left: "33.3%", top: "0%", width: "73.4%", height: "105.6%" },
   otc: { left: "-6.7%", top: "-3.4%", width: "73.4%", height: "105.6%" },
@@ -70,16 +76,47 @@ const K = {
   b0: 0.6, // OTC → WhatsApp morph starts
   b1: 0.74, // …ends
 };
+const KEYS = [K.a0, K.a1, K.b0, K.b1];
+
+/**
+ * Slot of each composition on the strip, in stage widths. The OTC composition's content
+ * ends at ~69% of its stage and the WhatsApp content starts at ~25%, so the third slot
+ * is packed closer (0.67 instead of 1, just past the OTC hand's right edge): the window stays full while the strip moves.
+ */
+const STRIP = [0, 1, 1.67] as const;
+
+/** Piecewise-linear interpolation over the morph keyframes (clamped). */
+function lerpKeys(v: number, out: readonly number[]) {
+  if (v <= KEYS[0]) return out[0];
+  for (let i = 1; i < KEYS.length; i++) {
+    if (v <= KEYS[i]) {
+      const f = (v - KEYS[i - 1]) / (KEYS[i] - KEYS[i - 1]);
+      return out[i - 1] + (out[i] - out[i - 1]) * f;
+    }
+  }
+  return out[out.length - 1];
+}
+const ramp = (v: number, from: number, to: number, a: number, b: number) =>
+  v <= from ? a : v >= to ? b : a + (b - a) * ((v - from) / (to - from));
+
+/** Panel edge/size in px for the current timeline position. */
+function usePanelGeo(t: MotionValue<number>, size: MotionValue<number>, key: "left" | "top" | "width" | "height") {
+  return useTransform([t, size], ([v, s]: number[]) => lerpKeys(v, [PANEL.p2p[key], PANEL.otc[key], PANEL.otc[key], PANEL.whatsapp[key]]) * s);
+}
 
 /* -------------------------------------------------------------------------- */
 /* Section                                                                     */
 /* -------------------------------------------------------------------------- */
 
 /**
- * 03 P2P · 04 OTC · 05 WhatsApp — on desktop these are one pinned sequence:
- * the lime panel slides and resizes between the three layouts while the
- * copy and phone compositions crossfade. On mobile they stack as three
- * ordinary sections with in-view entrances.
+ * 03 P2P · 04 OTC · 05 WhatsApp — on desktop these are one pinned sequence driven by a
+ * single scroll timeline. The lime panel is a window: the three compositions sit side by
+ * side on a strip behind it (each laid out in stage coordinates), and as the panel slides
+ * to its next position the strip pushes the outgoing composition out and the incoming one
+ * in, so the window is never empty and the photos (opaque lime exports) are always clipped
+ * by the panel. The copy columns on the black area cross over at the boundaries. Scrubbing,
+ * stopping and reversing all follow the scroll position; under reduced motion the timeline
+ * snaps between states instead of moving. On mobile the screens stack.
  */
 export function Products() {
   const ref = useRef<HTMLDivElement>(null);
@@ -89,56 +126,103 @@ export function Products() {
 
   const [active, setActive] = useState(0);
 
-  // Scale factor of the stage relative to the 1600×900 Figma frame (drives the copy column).
-  const stageRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const update = () => el.style.setProperty("--stage-k", String(Math.min(1, el.getBoundingClientRect().width / 1600)));
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // Stage size in px (the compositions are positioned in stage coordinates).
+  const stageW = useMotionValue(1600);
+  const stageH = useMotionValue(900);
+  const stageRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el) return;
+      const update = () => {
+        const r = el.getBoundingClientRect();
+        stageW.set(r.width);
+        stageH.set(r.height);
+        el.style.setProperty("--stage-k", String(Math.min(1, r.width / 1600)));
+        el.style.setProperty("--u", String(r.width / 1600));
+      };
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    },
+    [stageW, stageH],
+  );
+
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     const next = v < (K.a0 + K.a1) / 2 ? 0 : v < (K.b0 + K.b1) / 2 ? 1 : 2;
     if (next !== active) setActive(next);
   });
 
-  const left = useTransform(scrollYProgress, [K.a0, K.a1, K.b0, K.b1], [panel.p2p.left, panel.otc.left, panel.otc.left, panel.whatsapp.left]);
-  const top = useTransform(scrollYProgress, [K.a0, K.a1, K.b0, K.b1], [panel.p2p.top, panel.otc.top, panel.otc.top, panel.whatsapp.top]);
-  const width = useTransform(scrollYProgress, [K.a0, K.a1, K.b0, K.b1], [panel.p2p.width, panel.otc.width, panel.otc.width, panel.whatsapp.width]);
-  const height = useTransform(scrollYProgress, [K.a0, K.a1, K.b0, K.b1], [panel.p2p.height, panel.otc.height, panel.otc.height, panel.whatsapp.height]);
+  // Reduced motion: snap each morph at its midpoint instead of moving through it.
+  const t = useTransform(scrollYProgress, (v) => {
+    if (!reduce) return v;
+    if (v > K.a0 && v < K.a1) return v < (K.a0 + K.a1) / 2 ? K.a0 : K.a1;
+    if (v > K.b0 && v < K.b1) return v < (K.b0 + K.b1) / 2 ? K.b0 : K.b1;
+    return v;
+  });
 
-  // Per-screen opacity envelopes
-  const o0 = useTransform(scrollYProgress, [K.a0, K.a0 + 0.06], [1, 0]);
-  const o1 = useTransform(scrollYProgress, [K.a1 - 0.08, K.a1, K.b0, K.b0 + 0.06], [0, 1, 1, 0]);
-  const o2 = useTransform(scrollYProgress, [K.b1 - 0.08, K.b1], [0, 1]);
-  const envelopes = [o0, o1, o2];
+  const left = usePanelGeo(t, stageW, "left");
+  const top = usePanelGeo(t, stageH, "top");
+  const width = usePanelGeo(t, stageW, "width");
+  const height = usePanelGeo(t, stageH, "height");
+  const negLeft = useTransform(left, (v) => -v);
+  const negTop = useTransform(top, (v) => -v);
+
+  // The strip of compositions moves to each composition's slot across the two morphs.
+  const stripX = useTransform([t, stageW], ([v, w]: number[]) => -lerpKeys(v, [0, STRIP[1], STRIP[1], STRIP[2]]) * w);
+
+  // Copy columns: the outgoing column leaves as the panel starts to move, the incoming one
+  // settles once the panel has parked (its column sits where the moving panel passes).
+  const copy = [
+    { o: useTransform(t, (v) => ramp(v, K.a0, K.a0 + 0.04, 1, 0)), x: useTransform(t, (v) => ramp(v, K.a0, K.a0 + 0.04, 0, -40)) },
+    {
+      o: useTransform(t, (v) => (v < K.b0 - 0.03 ? ramp(v, K.a1 - 0.02, K.a1 + 0.05, 0, 1) : ramp(v, K.b0 - 0.03, K.b0 + 0.02, 1, 0))),
+      x: useTransform(t, (v) => (v < K.b0 - 0.03 ? ramp(v, K.a1 - 0.02, K.a1 + 0.05, 40, 0) : ramp(v, K.b0 - 0.03, K.b0 + 0.02, 0, -40))),
+    },
+    { o: useTransform(t, (v) => ramp(v, K.b1 - 0.04, K.b1 + 0.04, 0, 1)), x: useTransform(t, (v) => ramp(v, K.b1 - 0.04, K.b1 + 0.04, 40, 0)) },
+  ];
 
   // WhatsApp timeline fills as the last screen settles
-  const timeline = useTransform(scrollYProgress, [K.b1, 0.95], [0, 1]);
+  const timeline = useTransform(t, [K.b1, 0.95], [0, 1]);
 
   return (
     <div ref={ref} className="relative bg-black lg:h-[340vh]">
       {/* Desktop stage ------------------------------------------------------ */}
       <div className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center lg:justify-center lg:overflow-hidden">
-        <div ref={stageRef} className="relative aspect-[16/9] max-h-screen w-full overflow-hidden">
+        <motion.div
+          ref={stageRef}
+          className="relative aspect-[16/9] max-h-screen w-full overflow-hidden"
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: ease.out }}
+        >
+          {/* Lime panel = the window onto the composition strip */}
           <motion.div
             aria-hidden="true"
-            className="absolute rounded-panel bg-lime bg-pattern-lines will-change-[left,top,width,height]"
+            className="absolute overflow-hidden rounded-panel bg-lime will-change-[left,top,width,height]"
             style={{ left, top, width, height }}
-          />
+          >
+            <motion.div className="absolute" style={{ left: negLeft, top: negTop, width: stageW, height: stageH }}>
+              <motion.div className="absolute inset-0 will-change-transform" style={{ x: stripX }}>
+                {screens.map((screen, i) => (
+                  <Composition key={screen.id} id={screen.id} index={i} stageW={stageW} stripX={stripX} />
+                ))}
+              </motion.div>
+            </motion.div>
+          </motion.div>
+
           {screens.map((screen, i) => (
             <DesktopScreen
               key={screen.id}
               screen={screen}
               index={i}
               active={active === i}
-              opacity={envelopes[i]}
+              opacity={copy[i].o}
+              x={copy[i].x}
               timeline={timeline}
-              reduce={!!reduce}
             />
           ))}
-        </div>
+        </motion.div>
       </div>
 
       {/* Sentinels: give the nav + anchors something in normal flow to target */}
@@ -161,7 +245,7 @@ export function Products() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Desktop screen                                                              */
+/* Desktop copy column                                                         */
 /* -------------------------------------------------------------------------- */
 
 function DesktopScreen({
@@ -169,31 +253,20 @@ function DesktopScreen({
   index,
   active,
   opacity,
+  x,
   timeline,
-  reduce,
 }: {
   screen: Screen;
   index: number;
   active: boolean;
   opacity: MotionValue<number>;
+  x: MotionValue<number>;
   timeline: MotionValue<number>;
-  reduce: boolean;
 }) {
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? "auto" : "none"));
   const isWA = screen.id === "whatsapp";
   const textX = screen.side === "left" ? (isWA ? "3.9%" : "2.5%") : "69.6%";
   const onLime = isWA;
-
-  const group = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-  };
-  const item = reduce
-    ? { hidden: { opacity: 1 }, show: { opacity: 1 } }
-    : {
-        hidden: { opacity: 0, y: 24 },
-        show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: ease.out } },
-      };
 
   return (
     <motion.section
@@ -202,82 +275,79 @@ function DesktopScreen({
       className={`absolute inset-0 ${onLime ? "on-lime text-ink" : "text-white"}`}
       style={{ opacity, pointerEvents }}
     >
-      {/* Visual composition */}
-      <Visual id={screen.id} active={active} reduce={reduce} />
-
       {/* Copy column + feature list: laid out in 1600×900 frame pixels and scaled with the
           stage (--stage-k), so the Figma rhythm holds and the list never collides with the
           CTA or runs past the stage on 1280–1440 laptops and landscape tablets. */}
-      <div
-        className="absolute top-[4.4%] w-[464px] origin-top-left"
-        style={{ left: textX, transform: "scale(var(--stage-k, 1))" }}
-      >
       <motion.div
-        className="relative w-full"
-        variants={group}
-        initial="hidden"
-        animate={active ? "show" : "hidden"}
+        className="absolute top-[4.4%] w-[464px] origin-top-left"
+        style={{ left: textX, x, scale: "var(--stage-k, 1)" }}
       >
-        <motion.div variants={item}>
+        <div className="relative w-full">
           <Tag>{screen.tag}</Tag>
-        </motion.div>
-        <motion.h2
-          id={`${screen.id}-title`}
-          variants={item}
-          className={`text-h3 mt-[54px] ${isWA ? "max-w-[320px]" : "max-w-[470px]"}`}
-        >
-          {screen.title.map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))}
-        </motion.h2>
-        <motion.p
-          variants={item}
-          className={`text-body-l mt-[30px] ${isWA ? "max-w-[447px] text-forest" : "max-w-[425px] text-grey"} ${
-            screen.id === "otc" ? "max-w-[415px]" : ""
-          }`}
-        >
-          {screen.body}
-        </motion.p>
-        <motion.div variants={item} className="mt-[46px]">
-          {isWA ? (
-            <Button href={screen.href} variant="ink" circleIcon={<Whatsapp className="size-[18px]" />}>
-              {screen.cta}
-            </Button>
-          ) : (
-            <Button href={screen.href}>{screen.cta}</Button>
-          )}
-        </motion.div>
-      </motion.div>
-
-      {/* Feature list (P2P / OTC) or steps timeline (WhatsApp) */}
-      {screen.features ? (
-        <motion.ul
-          className="absolute left-0 top-[553px] flex w-[376px] flex-col gap-[35px]"
-          variants={group}
-          initial="hidden"
-          animate={active ? "show" : "hidden"}
-        >
-          {screen.features.map((f) => (
-            <motion.li key={f.title} variants={item} className="grid grid-cols-[62px_1fr] gap-x-[2px]">
-              <span className="flex size-[62px] items-start justify-center pt-1 text-lime">
-                {icons[f.icon]({ className: "h-[34px] w-auto max-w-[36px]" })}
+          <h2 id={`${screen.id}-title`} className={`text-h3 mt-[54px] ${isWA ? "max-w-[320px]" : "max-w-[470px]"}`}>
+            {screen.title.map((line) => (
+              <span key={line} className="block">
+                {line}
               </span>
-              <div>
-                <h3 className="text-mono-14 text-gradient-lime uppercase">{f.title}</h3>
-                <p className="text-body-s mt-[9px] max-w-[312px] text-grey">{f.body}</p>
-              </div>
-            </motion.li>
-          ))}
-        </motion.ul>
-      ) : null}
-      </div>
+            ))}
+          </h2>
+          <p
+            className={`text-body-l mt-[30px] ${isWA ? "max-w-[447px] text-forest" : "max-w-[425px] text-grey"} ${
+              screen.id === "otc" ? "max-w-[415px]" : ""
+            }`}
+          >
+            {screen.body}
+          </p>
+          <div className="mt-[46px]">
+            {isWA ? (
+              <Button href={screen.href} variant="ink" circleIcon={<Whatsapp className="size-[18px]" />}>
+                {screen.cta}
+              </Button>
+            ) : (
+              <Button href={screen.href}>{screen.cta}</Button>
+            )}
+          </div>
+        </div>
+
+        {/* Feature list (P2P / OTC) */}
+        {screen.features ? (
+          <ul className="absolute left-0 top-[553px] flex w-[376px] flex-col gap-[35px]">
+            {screen.features.map((f) => (
+              <li key={f.title} className="grid grid-cols-[62px_1fr] gap-x-[2px]">
+                <span className="flex size-[62px] items-start justify-center pt-1 text-lime">
+                  {icons[f.icon]({ className: "h-[34px] w-auto max-w-[36px]" })}
+                </span>
+                <div>
+                  <h3 className="text-mono-14 text-gradient-lime uppercase">{f.title}</h3>
+                  <p className="text-body-s mt-[9px] max-w-[312px] text-grey">{f.body}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </motion.div>
       {isWA ? <Timeline active={active} progress={timeline} className="absolute left-[66.4%] top-[16.2%] w-[31%]" /> : null}
 
-      {/* Index chip, bottom right of stage (desktop only, subtle wayfinding) */}
       <span className="sr-only">Screen {index + 1} of 3</span>
     </motion.section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Desktop compositions on the strip (stage coordinates, one stage width apart) */
+/* -------------------------------------------------------------------------- */
+
+function Composition({ id, index, stageW, stripX }: { id: Screen["id"]; index: number; stageW: MotionValue<number>; stripX: MotionValue<number> }) {
+  const x = useTransform(stageW, (w) => w * STRIP[index]);
+  // The pattern tile is periodic (19.8px), so offsetting it by the strip position keeps
+  // the hairlines continuous across the seam between two compositions.
+  const patternX = useTransform(stageW, (w) => -w * STRIP[index]);
+  // Subtle parallax: cards drift a little further than the phone while the strip moves.
+  const parallax = useTransform([stripX, stageW], ([s, w]: number[]) => (s + w * STRIP[index]) * 0.08);
+  return (
+    <motion.div aria-hidden="true" className="absolute inset-0" style={{ x }}>
+      <Visual id={id} patternX={patternX} parallax={parallax} />
+    </motion.div>
   );
 }
 
@@ -285,66 +355,94 @@ function DesktopScreen({
 /* Visual compositions (phone + glass cards) — % of the 1600×900 stage        */
 /* -------------------------------------------------------------------------- */
 
-function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; reduce: boolean }) {
-  // Under reduced motion the pieces must still be driven to their resting state: `reduce`
-  // is false during hydration, so the hidden `initial` pose has already been applied.
-  const float = (delay: number) =>
-    reduce
-      ? { animate: { opacity: 1, y: 0, scale: 1 }, transition: { duration: 0 } }
-      : {
-          initial: { opacity: 0, y: 30, scale: 0.96 },
-          animate: active ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.96 },
-          transition: { duration: 0.8, ease: ease.out, delay },
-        };
+function Visual({
+  id,
+  mobile,
+  patternX,
+  parallax,
+}: {
+  id: Screen["id"];
+  mobile?: boolean;
+  patternX?: MotionValue<number>;
+  parallax?: MotionValue<number>;
+}) {
+  // Mobile: `--u` = composition width ÷ 1600 (desktop sets it on the stage).
+  const rootRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !mobile) return;
+      const update = () => el.style.setProperty("--u", String(el.getBoundingClientRect().width / 1600));
+      update();
+      const ro = new ResizeObserver(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    },
+    [mobile],
+  );
+
+  // The phone / hand photos ship with the lime background baked in (opaque exports), so the
+  // panel's hairline pattern is drawn as an overlay above them (Figma layers the pattern tile
+  // above the photo) — otherwise the photo's rectangle reads as a boundary on the panel.
+  const pattern = (
+    <motion.div
+      aria-hidden="true"
+      className="bg-pattern-lines pointer-events-none absolute"
+      style={{ inset: mobile ? "-100%" : 0, backgroundPositionX: patternX }}
+    />
+  );
+  const cardStyle = parallax ? { x: parallax } : undefined;
 
   if (id === "p2p") {
     return (
-      <div aria-hidden="true" className="absolute inset-0">
-        <motion.div className="absolute left-[43%] top-[8.9%] w-[54.4%]" {...float(0.05)}>
+      <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
+        <div className="absolute left-[43%] top-[8.9%] w-[54.4%]">
           <Image src={asset("/images/p2p-phone.png")} alt="" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
+        </div>
+        {pattern}
+        <motion.div className="absolute left-[40.75%] top-[18%]" style={cardStyle}>
+          <GlassCard variant="takers" />
         </motion.div>
-        <motion.div className="absolute left-[40.75%] top-[18%] w-[16.9%]" {...float(0.25)}>
-          <Image src={asset("/images/p2p-fee-takers.png")} alt="" width={540} height={580} sizes="17vw" className="h-auto w-full" />
-        </motion.div>
-        <motion.div className="absolute left-[74.3%] top-[50.2%] w-[13.8%]" {...float(0.35)}>
-          <Image src={asset("/images/p2p-fee-makers.png")} alt="" width={442} height={476} sizes="14vw" className="h-auto w-full" />
+        <motion.div className="absolute left-[74.3%] top-[50.2%]" style={cardStyle}>
+          <GlassCard variant="makers" />
         </motion.div>
       </div>
     );
   }
   if (id === "otc") {
     // otc-hand.png is exported with an opaque lime background that is 2.5% wider than the
-    // lime panel, so the composition is clipped to the panel's own geometry — otherwise a
-    // lime step shows beside the OTC TRADING label (not in Figma, where the panel clips it).
+    // lime panel, so the photo is clipped to the panel's own geometry — otherwise a lime step
+    // shows beside the OTC TRADING label (not in Figma, where the panel clips it).
     return (
-      <div
-        aria-hidden="true"
-        className="rounded-panel absolute overflow-hidden"
-        style={{ left: panel.otc.left, top: panel.otc.top, width: panel.otc.width, height: panel.otc.height }}
-      >
-        <motion.div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]" {...float(0.05)}>
-          <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
-          {/* phone screen overlay, positioned relative to the hand image */}
-          <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
-            <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
+      <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
+        <div
+          className="rounded-panel absolute overflow-hidden"
+          style={{ left: panel.otc.left, top: panel.otc.top, width: panel.otc.width, height: panel.otc.height }}
+        >
+          <div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]">
+            <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
+            {/* phone screen overlay, positioned relative to the hand image */}
+            <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
+              <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
+            </div>
           </div>
+        </div>
+        {pattern}
+        <motion.div className="absolute left-[5.375%] top-[21.9%]" style={cardStyle}>
+          <GlassCard variant="otcQuote" />
         </motion.div>
-        <motion.div className="absolute left-[16.49%] top-[23.96%] w-[28.27%]" {...float(0.25)}>
-          <Image src={asset("/images/otc-card-quote.png")} alt="" width={664} height={559} sizes="21vw" className="h-auto w-full" />
-        </motion.div>
-        <motion.div className="absolute left-[62.26%] top-[56.91%] w-[23.16%]" {...float(0.35)}>
-          <Image src={asset("/images/otc-card-terms.png")} alt="" width={547} height={460} sizes="17vw" className="h-auto w-full" />
+        <motion.div className="absolute left-[39%] top-[56.7%]" style={cardStyle}>
+          <GlassCard variant="otcTerms" />
         </motion.div>
       </div>
     );
   }
   return (
-    <div aria-hidden="true" className="absolute inset-0">
-      <motion.div className="absolute left-[33.4%] top-[13.2%] w-[46%]" {...float(0.05)}>
+    <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
+      <div className="absolute left-[33.4%] top-[13.2%] w-[46%]">
         <Image src={asset("/images/wa-phone.png")} alt="" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
-      </motion.div>
-      <motion.div className="absolute left-[25.3%] top-[43.7%] w-[15.7%]" {...float(0.25)}>
-        <Image src={asset("/images/wa-fee-card.png")} alt="" width={502} height={396} sizes="16vw" className="h-auto w-full" />
+      </div>
+      {pattern}
+      <motion.div className="absolute left-[25.3%] top-[43.65%]" style={cardStyle}>
+        <GlassCard variant="whatsapp" />
       </motion.div>
     </div>
   );
@@ -437,12 +535,12 @@ function MobileScreen({ screen, withId }: { screen: Screen; withId: boolean }) {
       </RevealGroup>
 
       {/* Lime image panel */}
-      <Reveal className="relative -mx-5 mt-12 aspect-[375/372] overflow-hidden bg-lime bg-pattern-lines">
+      <Reveal className="relative -mx-5 mt-12 aspect-[375/372] overflow-hidden bg-lime">
         <div
           className="absolute top-0 aspect-[16/9] w-[170%]"
           style={{ left: mobileOffset[screen.id] }}
         >
-          <Visual id={screen.id} active reduce={false} />
+          <Visual id={screen.id} mobile />
         </div>
       </Reveal>
 
