@@ -15,6 +15,7 @@ import {
   Whatsapp,
 } from "@/components/ui/icons";
 import { Marker, Tag } from "@/components/ui/Primitives";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { Reveal, RevealGroup, RevealLines } from "@/components/ui/Reveal";
 import { otc, p2p, whatsapp } from "@/lib/content";
 import { ease } from "@/lib/motion";
@@ -54,7 +55,7 @@ const screens: Screen[] = [
 ];
 
 /** Horizontal offset of the 170%-wide composition inside the mobile panel. */
-const mobileOffset: Record<Screen["id"], string> = { p2p: "-42%", otc: "-18%", whatsapp: "-30%" };
+const mobileOffset: Record<Screen["id"], string> = { p2p: "-42%", otc: "-7%", whatsapp: "-30%" };
 
 /** Lime panel geometry per screen, in % of the 1600×900 stage. */
 const panel = {
@@ -109,9 +110,11 @@ export function Products() {
   const height = useTransform(scrollYProgress, [K.a0, K.a1, K.b0, K.b1], [panel.p2p.height, panel.otc.height, panel.otc.height, panel.whatsapp.height]);
 
   // Per-screen opacity envelopes
-  const o0 = useTransform(scrollYProgress, [K.a0, K.a0 + 0.06], [1, 0]);
-  const o1 = useTransform(scrollYProgress, [K.a1 - 0.08, K.a1, K.b0, K.b0 + 0.06], [0, 1, 1, 0]);
-  const o2 = useTransform(scrollYProgress, [K.b1 - 0.08, K.b1], [0, 1]);
+  // Compositions fade out before the panel starts moving and fade in once it has arrived,
+  // so the photos (exported with the lime background baked in) never sit over black.
+  const o0 = useTransform(scrollYProgress, [K.a0 - 0.06, K.a0], [1, 0]);
+  const o1 = useTransform(scrollYProgress, [K.a1 - 0.01, K.a1 + 0.07, K.b0 - 0.06, K.b0], [0, 1, 1, 0]);
+  const o2 = useTransform(scrollYProgress, [K.b1 - 0.01, K.b1 + 0.07], [0, 1]);
   const envelopes = [o0, o1, o2];
 
   // WhatsApp timeline fills as the last screen settles
@@ -124,7 +127,7 @@ export function Products() {
         <div ref={stageRef} className="relative aspect-[16/9] max-h-screen w-full overflow-hidden">
           <motion.div
             aria-hidden="true"
-            className="absolute rounded-panel bg-lime bg-pattern-lines will-change-[left,top,width,height]"
+            className="absolute rounded-panel bg-lime will-change-[left,top,width,height]"
             style={{ left, top, width, height }}
           />
           {screens.map((screen, i) => (
@@ -285,7 +288,7 @@ function DesktopScreen({
 /* Visual compositions (phone + glass cards) — % of the 1600×900 stage        */
 /* -------------------------------------------------------------------------- */
 
-function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; reduce: boolean }) {
+function Visual({ id, active, reduce, mobile }: { id: Screen["id"]; active: boolean; reduce: boolean; mobile?: boolean }) {
   // Under reduced motion the pieces must still be driven to their resting state: `reduce`
   // is false during hydration, so the hidden `initial` pose has already been applied.
   const float = (delay: number) =>
@@ -297,54 +300,79 @@ function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; red
           transition: { duration: 0.8, ease: ease.out, delay },
         };
 
+  // `--u` = stage width ÷ 1600: the glass cards are laid out in Figma frame px and scaled by it.
+  const rootRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const update = () => el.style.setProperty("--u", String(el.getBoundingClientRect().width / 1600));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // The phone / hand photos ship with the lime background baked in (opaque exports), so the
+  // panel's hairline pattern is drawn as an overlay above them (Figma layers the pattern tile
+  // above the photo) — otherwise the photo's rectangle reads as a boundary on the panel.
+  const pattern = (
+    <div
+      aria-hidden="true"
+      className="rounded-panel bg-pattern-lines pointer-events-none absolute"
+      style={mobile ? { inset: "-100%" } : { left: panel[id].left, top: panel[id].top, width: panel[id].width, height: panel[id].height }}
+    />
+  );
+
   if (id === "p2p") {
     return (
-      <div aria-hidden="true" className="absolute inset-0">
+      <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
         <motion.div className="absolute left-[43%] top-[8.9%] w-[54.4%]" {...float(0.05)}>
           <Image src={asset("/images/p2p-phone.png")} alt="" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
         </motion.div>
-        <motion.div className="absolute left-[40.75%] top-[18%] w-[16.9%]" {...float(0.25)}>
-          <Image src={asset("/images/p2p-fee-takers.png")} alt="" width={540} height={580} sizes="17vw" className="h-auto w-full" />
+        {pattern}
+        <motion.div className="absolute left-[40.75%] top-[18%]" {...float(0.25)}>
+          <GlassCard variant="takers" />
         </motion.div>
-        <motion.div className="absolute left-[74.3%] top-[50.2%] w-[13.8%]" {...float(0.35)}>
-          <Image src={asset("/images/p2p-fee-makers.png")} alt="" width={442} height={476} sizes="14vw" className="h-auto w-full" />
+        <motion.div className="absolute left-[74.3%] top-[50.2%]" {...float(0.35)}>
+          <GlassCard variant="makers" />
         </motion.div>
       </div>
     );
   }
   if (id === "otc") {
     // otc-hand.png is exported with an opaque lime background that is 2.5% wider than the
-    // lime panel, so the composition is clipped to the panel's own geometry — otherwise a
-    // lime step shows beside the OTC TRADING label (not in Figma, where the panel clips it).
+    // lime panel, so the photo is clipped to the panel's own geometry — otherwise a lime step
+    // shows beside the OTC TRADING label (not in Figma, where the panel clips it).
     return (
-      <div
-        aria-hidden="true"
-        className="rounded-panel absolute overflow-hidden"
-        style={{ left: panel.otc.left, top: panel.otc.top, width: panel.otc.width, height: panel.otc.height }}
-      >
-        <motion.div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]" {...float(0.05)}>
-          <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
-          {/* phone screen overlay, positioned relative to the hand image */}
-          <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
-            <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
-          </div>
+      <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
+        <div
+          className="rounded-panel absolute overflow-hidden"
+          style={{ left: panel.otc.left, top: panel.otc.top, width: panel.otc.width, height: panel.otc.height }}
+        >
+          <motion.div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]" {...float(0.05)}>
+            <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
+            {/* phone screen overlay, positioned relative to the hand image */}
+            <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
+              <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
+            </div>
+          </motion.div>
+        </div>
+        {pattern}
+        <motion.div className="absolute left-[5.375%] top-[21.9%]" {...float(0.25)}>
+          <GlassCard variant="otcQuote" />
         </motion.div>
-        <motion.div className="absolute left-[16.49%] top-[23.96%] w-[28.27%]" {...float(0.25)}>
-          <Image src={asset("/images/otc-card-quote.png")} alt="" width={664} height={559} sizes="21vw" className="h-auto w-full" />
-        </motion.div>
-        <motion.div className="absolute left-[62.26%] top-[56.91%] w-[23.16%]" {...float(0.35)}>
-          <Image src={asset("/images/otc-card-terms.png")} alt="" width={547} height={460} sizes="17vw" className="h-auto w-full" />
+        <motion.div className="absolute left-[39%] top-[56.7%]" {...float(0.35)}>
+          <GlassCard variant="otcTerms" />
         </motion.div>
       </div>
     );
   }
   return (
-    <div aria-hidden="true" className="absolute inset-0">
+    <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
       <motion.div className="absolute left-[33.4%] top-[13.2%] w-[46%]" {...float(0.05)}>
         <Image src={asset("/images/wa-phone.png")} alt="" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
       </motion.div>
-      <motion.div className="absolute left-[25.3%] top-[43.7%] w-[15.7%]" {...float(0.25)}>
-        <Image src={asset("/images/wa-fee-card.png")} alt="" width={502} height={396} sizes="16vw" className="h-auto w-full" />
+      {pattern}
+      <motion.div className="absolute left-[25.3%] top-[43.65%]" {...float(0.25)}>
+        <GlassCard variant="whatsapp" />
       </motion.div>
     </div>
   );
@@ -437,12 +465,12 @@ function MobileScreen({ screen, withId }: { screen: Screen; withId: boolean }) {
       </RevealGroup>
 
       {/* Lime image panel */}
-      <Reveal className="relative -mx-5 mt-12 aspect-[375/372] overflow-hidden bg-lime bg-pattern-lines">
+      <Reveal className="relative -mx-5 mt-12 aspect-[375/372] overflow-hidden bg-lime">
         <div
           className="absolute top-0 aspect-[16/9] w-[170%]"
           style={{ left: mobileOffset[screen.id] }}
         >
-          <Visual id={screen.id} active reduce={false} />
+          <Visual id={screen.id} active reduce={false} mobile />
         </div>
       </Reveal>
 

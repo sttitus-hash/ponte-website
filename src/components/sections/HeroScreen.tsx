@@ -2,6 +2,7 @@
 
 import { useCallback, useState, type CSSProperties, type ReactNode } from "react";
 import { BrandLogo, BrandMark } from "@/components/ui/icons";
+import { quadMatrix } from "@/lib/quad";
 
 /**
  * The OTC trade screen shown inside the hero's desktop display, rebuilt as live HTML so
@@ -16,22 +17,6 @@ import { BrandLogo, BrandMark } from "@/components/ui/icons";
 const SCREEN = { x: 32.8475, y: 9.6014, w: 740.3178, h: 512.9164, inset: 6.9139, radius: 16.3 };
 const DEVICE = { w: 805.001, h: 748.908 };
 const NAT = { w: 1480, h: 1026 }; // natural layout size (2× of the 1x screen box)
-
-/** Projective transform mapping the NAT rectangle onto an arbitrary quad (CSS matrix3d). */
-function quadMatrix(w: number, h: number, q: [number, number][]) {
-  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = q; // TL, TR, BR, BL
-  // Solve the 8 homography coefficients (a..h) for (0,0)->p0, (w,0)->p1, (w,h)->p2, (0,h)->p3.
-  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3;
-  const dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
-  const det = dx1 * dy2 - dx2 * dy1;
-  const g = (dx3 * dy2 - dx2 * dy3) / det;
-  const hh = (dx1 * dy3 - dx3 * dy1) / det;
-  const a = x1 - x0 + g * x1, b = x3 - x0 + hh * x3, c = x0;
-  const d = y1 - y0 + g * y1, e = y3 - y0 + hh * y3, f = y0;
-  // Unit square -> quad; prepend the scale from the NAT rectangle to the unit square.
-  const m = [a / w, d / w, 0, g / w, b / h, e / h, 0, hh / h, 0, 0, 1, 0, c, f, 0, 1];
-  return `matrix3d(${m.map((v) => +v.toFixed(6)).join(",")})`;
-}
 
 export function HeroScreen() {
   const [transform, setTransform] = useState<string>(() => {

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useRef, useState } from "react";
 import { Marker, Tag } from "@/components/ui/Primitives";
+import { ChevronSmall } from "@/components/ui/icons";
 import { Reveal, RevealLines } from "@/components/ui/Reveal";
 import { trackRecord } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
@@ -22,6 +23,7 @@ export function TrackRecord() {
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const [mIndex, setMIndex] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
   useMotionValueEvent(scrollYProgress, "change", (v) => {
@@ -84,8 +86,11 @@ export function TrackRecord() {
               <SlideCard index={index} />
             </div>
             {/* Mobile: swipeable */}
-            <MobileSlider />
+            <MobileSlider index={mIndex} onChange={setMIndex} />
           </motion.div>
+
+          {/* Mobile progress rail — outside the card, as in the Figma mobile frame */}
+          <MobileRail index={mIndex} onChange={setMIndex} />
         </div>
       </div>
     </section>
@@ -124,7 +129,7 @@ function SlideCard({ index }: { index: number }) {
         </AnimatePresence>
       </div>
 
-      <div className="relative mx-auto flex w-[64%] max-w-[424px] flex-1 items-center justify-center py-6">
+      <div className="relative mx-auto flex w-[50%] max-w-[424px] flex-1 items-center justify-center py-5 lg:w-[64%] lg:py-6">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`img-${index}`}
@@ -146,7 +151,7 @@ function SlideCard({ index }: { index: number }) {
         </AnimatePresence>
       </div>
 
-      <div className="flex items-end justify-between gap-6">
+      <div className="flex flex-col-reverse items-start gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
         <AnimatePresence mode="wait" initial={false}>
           <motion.p
             key={`cap-${index}`}
@@ -165,7 +170,7 @@ function SlideCard({ index }: { index: number }) {
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
             transition={{ duration: 0.45, ease: ease.out }}
-            className="text-dot-88 whitespace-nowrap text-[#333333]"
+            className="text-dot-88 whitespace-nowrap text-[#333333] max-lg:text-[56px]"
           >
             {slide.figure}
           </motion.p>
@@ -186,65 +191,61 @@ function SlideCard({ index }: { index: number }) {
   );
 }
 
-function MobileSlider() {
-  const [index, setIndex] = useState(0);
-  const go = (dir: number) => setIndex((i) => Math.min(slides.length - 1, Math.max(0, i + dir)));
-
+function MobileSlider({ index, onChange }: { index: number; onChange: (i: number) => void }) {
+  const go = (dir: number) => onChange(Math.min(slides.length - 1, Math.max(0, index + dir)));
   return (
-    <div className="relative lg:hidden">
-      <motion.div
-        className="min-h-[520px] cursor-grab active:cursor-grabbing"
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={(_, info) => {
-          if (info.offset.x < -60) go(1);
-          else if (info.offset.x > 60) go(-1);
-        }}
-      >
-        <SlideCard index={index} />
-      </motion.div>
-
-      <div className="flex items-center justify-between px-6 pb-6">
-        <div className="relative h-px flex-1 bg-ink/20">
-          <motion.div
-            className="absolute inset-y-0 left-0 bg-ink"
-            animate={{ width: `${((index + 1) / slides.length) * 100}%` }}
-            transition={{ duration: 0.4, ease: ease.out }}
-          />
-        </div>
-        <div className="ml-5 flex gap-2">
-          <SliderButton label="Previous" onClick={() => go(-1)} disabled={index === 0} flip />
-          <SliderButton label="Next" onClick={() => go(1)} disabled={index === slides.length - 1} />
-        </div>
-      </div>
-    </div>
+    <motion.div
+      className="min-h-[352px] cursor-grab active:cursor-grabbing lg:hidden"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(_, info) => {
+        if (info.offset.x < -60) go(1);
+        else if (info.offset.x > 60) go(-1);
+      }}
+    >
+      <SlideCard index={index} />
+    </motion.div>
   );
 }
 
-function SliderButton({
-  label,
-  onClick,
-  disabled,
-  flip,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  flip?: boolean;
-}) {
+/** Progress line with four square stops, "01 / 04" and a SWIPE hint (Figma mobile "about"). */
+function MobileRail({ index, onChange }: { index: number; onChange: (i: number) => void }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className="flex size-9 items-center justify-center rounded-full bg-ink text-lime disabled:opacity-30"
-    >
-      <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden="true" className={flip ? "rotate-180" : ""}>
-        <path d="M0.5 0.5 6 6 0.5 11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    </button>
+    <div className="mt-2 lg:hidden">
+      <div className="relative h-[14px]" role="tablist" aria-label="Milestones">
+        <div className="absolute inset-x-[5px] top-1/2 h-px -translate-y-1/2 bg-cream-warm/25" />
+        <motion.div
+          className="absolute left-[5px] top-1/2 h-px -translate-y-1/2 bg-lime"
+          animate={{ width: `calc((100% - 10px) * ${index / (slides.length - 1)})` }}
+          transition={{ duration: 0.4, ease: ease.out }}
+        />
+        {slides.map((s, i) => (
+          <button
+            key={s.topLeft}
+            type="button"
+            role="tab"
+            aria-selected={i === index}
+            aria-label={`Slide ${i + 1}`}
+            onClick={() => onChange(i)}
+            className="absolute top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            style={{ left: `calc(5px + (100% - 10px) * ${i / (slides.length - 1)})` }}
+          >
+            {i === index ? (
+              <span className="flex size-[14px] items-center justify-center rounded-[2px] border border-lime bg-black/60">
+                <span className="size-1 bg-lime" />
+              </span>
+            ) : (
+              <span className={`block size-[10px] rounded-[1px] ${i < index ? "bg-lime" : "bg-[#41403F]"}`} />
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-mono-14 uppercase text-cream">
+        <span aria-live="polite">0{index + 1} / 0{slides.length}</span>
+        <span className="flex items-center gap-2 text-grey">Swipe <ChevronSmall className="h-[10px] w-[6px]" /></span>
+      </div>
+    </div>
   );
 }
 
