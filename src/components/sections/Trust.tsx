@@ -184,8 +184,8 @@ export function Trust() {
 
 /** One stacked panel; fades / drifts with the deck position instead of waiting on an exit animation. */
 function PanelLayer({ pos, i, reduce, current }: { pos: MotionValue<number>; i: number; reduce: boolean; current: boolean }) {
-  // whole-panel dissolve (the "image" profile keeps a panel on screen at every scroll position)
-  const style = useTextLayer(pos, i, reduce, 18, "image");
+  // text hand-over profile: the panels are mostly type, so they must not read as doubled mid-ramp
+  const style = useTextLayer(pos, i, reduce, 18);
   return (
     <motion.div
       className={`absolute inset-0 ${current ? "" : "pointer-events-none"}`}
