@@ -240,6 +240,9 @@
     rgba(16, 15, 15, 0.055) 0 1px,
     transparent 1px 14px
   );
+  /* one period per tile (14px along the diagonal = 19.8px square), so the pattern is
+     periodic and tiles drawn with different background offsets stay continuous */
+  background-size: 19.799px 19.799px;
 }
 
 /* ---------------------------------------------------------------------------
