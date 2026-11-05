@@ -12,6 +12,7 @@ import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
 import { LightBridge } from "@/components/ui/LightBridge";
+import { HeroScreen } from "@/components/sections/HeroScreen";
 
 /**
  * 01 Hero — pinned for ~1.6 viewports on desktop. While pinned: the Light Bridge
@@ -109,6 +110,8 @@ export function Hero() {
             sizes="(min-width: 1024px) 50vw, 0px"
             className="h-auto w-full drop-shadow-[0_40px_80px_rgba(0,0,0,0.6)]"
           />
+          {/* Live OTC screen mapped onto the display (crisp at any DPR; see HeroScreen) */}
+          <HeroScreen />
         </motion.div>
 
         {/* Mockup (mobile) — phone cut off at the fold, like the design --- */}

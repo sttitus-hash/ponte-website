@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { Button } from "@/components/ui/Button";
 import {
@@ -88,6 +88,16 @@ export function Products() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
   const [active, setActive] = useState(0);
+
+  // Scale factor of the stage relative to the 1600×900 Figma frame (drives the copy column).
+  const stageRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const update = () => el.style.setProperty("--stage-k", String(Math.min(1, el.getBoundingClientRect().width / 1600)));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useMotionValueEvent(scrollYProgress, "change", (v) => {
     const next = v < (K.a0 + K.a1) / 2 ? 0 : v < (K.b0 + K.b1) / 2 ? 1 : 2;
     if (next !== active) setActive(next);
@@ -111,7 +121,7 @@ export function Products() {
     <div ref={ref} className="relative bg-black lg:h-[340vh]">
       {/* Desktop stage ------------------------------------------------------ */}
       <div className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center lg:justify-center lg:overflow-hidden">
-        <div className="relative aspect-[16/9] max-h-screen w-full overflow-hidden">
+        <div ref={stageRef} className="relative aspect-[16/9] max-h-screen w-full overflow-hidden">
           <motion.div
             aria-hidden="true"
             className="absolute rounded-panel bg-lime bg-pattern-lines will-change-[left,top,width,height]"
@@ -195,10 +205,15 @@ function DesktopScreen({
       {/* Visual composition */}
       <Visual id={screen.id} active={active} reduce={reduce} />
 
-      {/* Copy column */}
+      {/* Copy column + feature list: laid out in 1600×900 frame pixels and scaled with the
+          stage (--stage-k), so the Figma rhythm holds and the list never collides with the
+          CTA or runs past the stage on 1280–1440 laptops and landscape tablets. */}
+      <div
+        className="absolute top-[4.4%] w-[464px] origin-top-left"
+        style={{ left: textX, transform: "scale(var(--stage-k, 1))" }}
+      >
       <motion.div
-        className="absolute top-[4.4%] w-[29%]"
-        style={{ left: textX }}
+        className="relative w-full"
         variants={group}
         initial="hidden"
         animate={active ? "show" : "hidden"}
@@ -239,8 +254,7 @@ function DesktopScreen({
       {/* Feature list (P2P / OTC) or steps timeline (WhatsApp) */}
       {screen.features ? (
         <motion.ul
-          className="absolute top-[65.9%] flex w-[23.5%] flex-col gap-[35px]"
-          style={{ left: textX }}
+          className="absolute left-0 top-[553px] flex w-[376px] flex-col gap-[35px]"
           variants={group}
           initial="hidden"
           animate={active ? "show" : "hidden"}
@@ -257,9 +271,9 @@ function DesktopScreen({
             </motion.li>
           ))}
         </motion.ul>
-      ) : (
-        <Timeline active={active} progress={timeline} className="absolute left-[66.4%] top-[16.2%] w-[31%]" />
-      )}
+      ) : null}
+      </div>
+      {isWA ? <Timeline active={active} progress={timeline} className="absolute left-[66.4%] top-[16.2%] w-[31%]" /> : null}
 
       {/* Index chip, bottom right of stage (desktop only, subtle wayfinding) */}
       <span className="sr-only">Screen {index + 1} of 3</span>
@@ -299,19 +313,26 @@ function Visual({ id, active, reduce }: { id: Screen["id"]; active: boolean; red
     );
   }
   if (id === "otc") {
+    // otc-hand.png is exported with an opaque lime background that is 2.5% wider than the
+    // lime panel, so the composition is clipped to the panel's own geometry — otherwise a
+    // lime step shows beside the OTC TRADING label (not in Figma, where the panel clips it).
     return (
-      <div aria-hidden="true" className="absolute inset-0">
-        <motion.div className="absolute left-[3.2%] top-[6.6%] w-[66%]" {...float(0.05)}>
+      <div
+        aria-hidden="true"
+        className="rounded-panel absolute overflow-hidden"
+        style={{ left: panel.otc.left, top: panel.otc.top, width: panel.otc.width, height: panel.otc.height }}
+      >
+        <motion.div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]" {...float(0.05)}>
           <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
           {/* phone screen overlay, positioned relative to the hand image */}
           <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
             <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
           </div>
         </motion.div>
-        <motion.div className="absolute left-[5.4%] top-[21.9%] w-[20.75%]" {...float(0.25)}>
+        <motion.div className="absolute left-[16.49%] top-[23.96%] w-[28.27%]" {...float(0.25)}>
           <Image src={asset("/images/otc-card-quote.png")} alt="" width={664} height={559} sizes="21vw" className="h-auto w-full" />
         </motion.div>
-        <motion.div className="absolute left-[39%] top-[56.7%] w-[17%]" {...float(0.35)}>
+        <motion.div className="absolute left-[62.26%] top-[56.91%] w-[23.16%]" {...float(0.35)}>
           <Image src={asset("/images/otc-card-terms.png")} alt="" width={547} height={460} sizes="17vw" className="h-auto w-full" />
         </motion.div>
       </div>
