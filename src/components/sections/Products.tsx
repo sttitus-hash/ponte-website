@@ -191,10 +191,10 @@ export function Products() {
         <motion.div
           ref={stageRef}
           className="relative aspect-[16/9] max-h-screen w-full overflow-hidden"
-          initial={reduce ? false : { opacity: 0, y: 48 }}
+          initial={reduce ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.9, ease: ease.out }}
+          transition={{ duration: 0.6, ease: ease.out }}
         >
           {/* Lime panel = the window onto the composition strip */}
           <motion.div

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { motion, useMotionValueEvent, useScroll, type MotionValue } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 import { ChevronSmall } from "@/components/ui/icons";
 import { LightBridge } from "@/components/ui/LightBridge";
@@ -11,6 +11,7 @@ import { trust } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { links } from "@/lib/site";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { deckSlideCenter, useDeckPosition, useTextLayer } from "@/hooks/useSlideDeck";
 
 const tabs = trust.tabs;
 const LOTTIE: Record<string, string> = {
@@ -32,8 +33,10 @@ export function Trust() {
   const [active, setActive] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    const next = Math.min(tabs.length - 1, Math.max(0, Math.floor(v * tabs.length)));
+  // One continuous deck position; the panel layers are pure functions of it (see useSlideDeck).
+  const pos = useDeckPosition(scrollYProgress, tabs.length, reduce);
+  useMotionValueEvent(pos, "change", (v) => {
+    const next = Math.round(v);
     if (next !== active) setActive(next);
   });
 
@@ -43,7 +46,7 @@ export function Trust() {
     const rect = el.getBoundingClientRect();
     const top = rect.top + window.scrollY;
     const travel = el.offsetHeight - window.innerHeight;
-    const target = top + travel * ((i + 0.5) / tabs.length);
+    const target = top + travel * deckSlideCenter(i, tabs.length);
     window.scrollTo({ top: target, behavior: "smooth" });
     setActive(i);
   }, []);
@@ -53,7 +56,7 @@ export function Trust() {
       ref={ref}
       id="trust"
       aria-labelledby="trust-title"
-      className="relative bg-black lg:h-[400vh]"
+      className="relative bg-black lg:h-[340vh]"
     >
       <div className="relative overflow-hidden lg:sticky lg:top-0 lg:h-screen">
         {/* Backdrop: the Light Bridge shader turned on its side (Figma: rotated video frame) */}
@@ -150,18 +153,9 @@ export function Trust() {
             aria-labelledby={`trust-tab-${active}`}
             className="on-lime relative mt-6 hidden min-h-[480px] overflow-hidden rounded-panel bg-lime text-ink lg:mt-0 lg:block lg:self-end"
           >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={active}
-                className="absolute inset-0"
-                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
-                transition={{ duration: 0.45, ease: ease.out }}
-              >
-                <PanelContent index={active} />
-              </motion.div>
-            </AnimatePresence>
+            {tabs.map((tab, i) => (
+              <PanelLayer key={tab.title} pos={pos} i={i} reduce={reduce} current={i === active} />
+            ))}
           </div>
 
           {/* Mobile: stacked cards -------------------------------------- */}
@@ -187,6 +181,21 @@ export function Trust() {
 }
 
 /* -------------------------------------------------------------------------- */
+
+/** One stacked panel; fades / drifts with the deck position instead of waiting on an exit animation. */
+function PanelLayer({ pos, i, reduce, current }: { pos: MotionValue<number>; i: number; reduce: boolean; current: boolean }) {
+  // whole-panel dissolve (the "image" profile keeps a panel on screen at every scroll position)
+  const style = useTextLayer(pos, i, reduce, 18, "image");
+  return (
+    <motion.div
+      className={`absolute inset-0 ${current ? "" : "pointer-events-none"}`}
+      style={style}
+      aria-hidden={current ? undefined : true}
+    >
+      <PanelContent index={i} />
+    </motion.div>
+  );
+}
 
 function PanelContent({ index, stacked, tone = "lime" }: { index: number; stacked?: boolean; tone?: "lime" | "mint" }) {
   const tab = tabs[index];

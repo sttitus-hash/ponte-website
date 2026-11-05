@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
+import { animate, motion, useMotionValue, useMotionValueEvent, useScroll, type MotionValue } from "motion/react";
 import { useRef, useState } from "react";
 import { Marker, Tag } from "@/components/ui/Primitives";
 import { ChevronSmall } from "@/components/ui/icons";
@@ -9,44 +9,59 @@ import { Reveal, RevealLines } from "@/components/ui/Reveal";
 import { trackRecord } from "@/lib/content";
 import { ease, viewportOnce } from "@/lib/motion";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { useDeckPosition, useImageLayer, useTextLayer } from "@/hooks/useSlideDeck";
 import { Lottie } from "@/components/ui/Lottie";
 import { asset } from "@/lib/asset";
 
 const slides = trackRecord.slides;
+const N = slides.length;
+/** Pinned travel: 4 holds + 3 short ramps (see useDeckPosition). 240vh ≈ 2.4 viewports of scroll. */
+const PIN = "lg:h-[340vh]";
 
 /**
- * 02 Track record — two cards. On desktop the section pins for 4 viewports and
- * the right card steps through the four facts as the user scrolls (labels,
- * 3D object and figure crossfade). On mobile the right card is a swipeable slider.
+ * 02 Track record — two cards. On desktop the section pins and the right card steps
+ * through the four facts as a single scroll-driven deck: every layer (labels, 3D object,
+ * caption, figure) is a pure function of scroll position, so there is no time-based
+ * exit to wait for and nothing to catch up on. On mobile the same deck is driven by a
+ * spring that follows the swipe.
  */
 export function TrackRecord() {
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
-  const [mIndex, setMIndex] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
-
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    const next = Math.min(slides.length - 1, Math.max(0, Math.floor(v * slides.length)));
+  const pos = useDeckPosition(scrollYProgress, N, reduce);
+  useMotionValueEvent(pos, "change", (v) => {
+    const next = Math.round(v);
     if (next !== index) setIndex(next);
   });
+
+  // Mobile: a spring-driven position that follows the swipe.
+  const [mIndex, setMIndex] = useState(0);
+  const mPos = useMotionValue(0);
+  const goMobile = (i: number) => {
+    const next = Math.min(N - 1, Math.max(0, i));
+    setMIndex(next);
+    if (reduce) mPos.set(next);
+    else animate(mPos, next, { type: "spring", stiffness: 260, damping: 30, mass: 0.8 });
+  };
 
   return (
     <section
       ref={ref}
       id="about"
       aria-labelledby="track-title"
-      className="relative bg-near-black lg:h-[400vh]"
+      className={`relative bg-near-black ${PIN}`}
     >
       <div className="px-gutter py-10 lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center">
         <div className="grid w-full gap-[10px] lg:grid-cols-2 lg:[height:min(755px,calc(100vh-80px))]">
           {/* Left — mint card -------------------------------------------- */}
           <motion.div
             className="relative flex flex-col justify-between overflow-hidden rounded-panel bg-mint p-6 text-black sm:p-10 lg:p-[39px]"
-            initial={reduce ? false : { opacity: 0, y: 48 }}
+            initial={reduce ? false : { opacity: 0, y: 32 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={viewportOnce}
-            transition={{ duration: 0.8, ease: ease.out }}
+            transition={{ duration: 0.6, ease: ease.out }}
           >
             <div className="flex items-start justify-between">
               <Tag>{trackRecord.tag}</Tag>
@@ -76,21 +91,21 @@ export function TrackRecord() {
           {/* Right — lime card ------------------------------------------- */}
           <motion.div
             className="on-lime relative overflow-hidden rounded-panel bg-lime text-ink"
-            initial={reduce ? false : { opacity: 0, y: 48 }}
+            initial={reduce ? false : { opacity: 0, y: 32 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={viewportOnce}
-            transition={{ duration: 0.8, ease: ease.out, delay: 0.1 }}
+            transition={{ duration: 0.6, ease: ease.out, delay: 0.06 }}
           >
             {/* Desktop: scroll-driven */}
             <div className="hidden h-full lg:block">
-              <SlideCard index={index} />
+              <SlideDeck pos={pos} index={index} reduce={reduce} />
             </div>
             {/* Mobile: swipeable */}
-            <MobileSlider index={mIndex} onChange={setMIndex} />
+            <MobileSlider pos={mPos} index={mIndex} reduce={reduce} onChange={goMobile} />
           </motion.div>
 
           {/* Mobile progress rail — outside the card, as in the Figma mobile frame */}
-          <MobileRail index={mIndex} onChange={setMIndex} />
+          <MobileRail index={mIndex} onChange={goMobile} />
         </div>
       </div>
     </section>
@@ -104,77 +119,59 @@ function DrawnLoops() {
   return <Lottie src="/animations/spring.json" tint className="aspect-[466/264] w-full" />;
 }
 
-/** Slide content for the lime card; animated by `key` on index change. */
-function SlideCard({ index }: { index: number }) {
-  const reduce = useReducedMotion();
-  const slide = slides[index];
-  const fade = {
-    initial: reduce ? { opacity: 0 } : { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    exit: reduce ? { opacity: 0 } : { opacity: 0, y: -12 },
-  };
+type DeckProps = { pos: MotionValue<number>; index: number; reduce: boolean };
 
+/**
+ * The lime card's content: all four slides are mounted and stacked (so every illustration is
+ * decoded before it is needed) and each layer follows the deck position.
+ */
+function SlideDeck({ pos, index, reduce }: DeckProps) {
   return (
     <div className="relative flex h-full flex-col justify-between p-6 sm:p-10 lg:p-[39px]">
-      <div className="flex items-start justify-between text-mono-16 text-moss" aria-live="polite">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span key={`tl-${index}`} {...fade} transition={{ duration: 0.35 }}>
-            {slide.topLeft}
-          </motion.span>
-        </AnimatePresence>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span key={`tr-${index}`} {...fade} transition={{ duration: 0.35 }} className="text-right">
-            {slide.topRight}
-          </motion.span>
-        </AnimatePresence>
+      <div className="grid text-mono-16 text-moss">
+        {slides.map((s, i) => (
+          <TextLayer key={s.topLeft} pos={pos} i={i} reduce={reduce} current={i === index} className="flex items-start justify-between">
+            <span>{s.topLeft}</span>
+            <span className="text-right">{s.topRight}</span>
+          </TextLayer>
+        ))}
       </div>
 
       <div className="relative mx-auto flex w-[50%] max-w-[424px] flex-1 items-center justify-center py-5 lg:w-[64%] lg:py-6">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={`img-${index}`}
-            className="w-full"
-            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, rotate: -4 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.94, rotate: 4 }}
-            transition={{ duration: 0.55, ease: ease.out }}
-          >
-            <Image
-              src={asset(slide.image)}
-              alt={slide.alt}
-              width={848}
-              height={822}
-              sizes="(min-width: 1024px) 424px, 60vw"
-              className="h-auto w-full"
-            />
-          </motion.div>
-        </AnimatePresence>
+        <div className="grid w-full">
+          {slides.map((s, i) => (
+            <ImageLayer key={s.image} pos={pos} i={i} reduce={reduce} current={i === index}>
+              <Image
+                src={asset(s.image)}
+                alt={s.alt}
+                width={848}
+                height={822}
+                sizes="(min-width: 1024px) 424px, 60vw"
+                className="h-auto w-full select-none"
+                draggable={false}
+              />
+            </ImageLayer>
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-col-reverse items-start gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.p
-            key={`cap-${index}`}
-            {...fade}
-            transition={{ duration: 0.35 }}
-            className="flex items-center gap-2 text-mono-16 text-moss"
+      <div className="grid">
+        {slides.map((s, i) => (
+          <TextLayer
+            key={s.figure}
+            pos={pos}
+            i={i}
+            reduce={reduce}
+            current={i === index}
+            className="flex flex-col-reverse items-start gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6"
           >
-            <Marker color="bg-forest" />
-            {slide.caption}
-          </motion.p>
-        </AnimatePresence>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.p
-            key={`fig-${index}`}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
-            transition={{ duration: 0.45, ease: ease.out }}
-            className="text-dot-88 whitespace-nowrap text-[#333333] max-lg:text-[56px]"
-          >
-            {slide.figure}
-          </motion.p>
-        </AnimatePresence>
+            <p className="flex items-center gap-2 text-mono-16 text-moss">
+              <Marker color="bg-forest" />
+              {s.caption}
+            </p>
+            <p className="text-dot-88 whitespace-nowrap text-[#333333] max-lg:text-[56px]">{s.figure}</p>
+          </TextLayer>
+        ))}
       </div>
 
       {/* step indicator — desktop only */}
@@ -183,7 +180,7 @@ function SlideCard({ index }: { index: number }) {
           <li
             key={s.topLeft}
             aria-current={i === index ? "step" : undefined}
-            className={`h-1 rounded-full transition-all duration-500 ${i === index ? "w-6 bg-ink" : "w-2 bg-ink/25"}`}
+            className={`h-1 rounded-full transition-all duration-300 ${i === index ? "w-6 bg-ink" : "w-2 bg-ink/25"}`}
           />
         ))}
       </ol>
@@ -191,20 +188,59 @@ function SlideCard({ index }: { index: number }) {
   );
 }
 
-function MobileSlider({ index, onChange }: { index: number; onChange: (i: number) => void }) {
-  const go = (dir: number) => onChange(Math.min(slides.length - 1, Math.max(0, index + dir)));
+type LayerProps = Omit<DeckProps, "index"> & { i: number; current: boolean; className?: string; children: React.ReactNode };
+
+/** A stacked text layer (all layers share grid cell 1/1, so the row is sized by the tallest). */
+function TextLayer({ pos, i, reduce, current, className = "", children }: LayerProps) {
+  const style = useTextLayer(pos, i, reduce);
   return (
     <motion.div
-      className="min-h-[352px] cursor-grab active:cursor-grabbing lg:hidden"
+      className={`col-start-1 row-start-1 ${current ? "" : "pointer-events-none"} ${className}`}
+      style={style}
+      aria-hidden={current ? undefined : true}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function ImageLayer({ pos, i, reduce, current, children }: LayerProps) {
+  const style = useImageLayer(pos, i, reduce);
+  return (
+    <motion.div
+      className="col-start-1 row-start-1 w-full will-change-transform"
+      style={style}
+      aria-hidden={current ? undefined : true}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function MobileSlider({
+  pos,
+  index,
+  reduce,
+  onChange,
+}: DeckProps & { onChange: (i: number) => void }) {
+  const go = (dir: number) => onChange(index + dir);
+  return (
+    <motion.div
+      className="min-h-[352px] cursor-grab touch-pan-y active:cursor-grabbing lg:hidden"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
+      dragElastic={0.12}
+      onDrag={(_, info) => {
+        // follow the finger: a 240px drag is one slide
+        if (!reduce) pos.set(Math.min(N - 1, Math.max(0, index - info.offset.x / 240)));
+      }}
       onDragEnd={(_, info) => {
-        if (info.offset.x < -60) go(1);
-        else if (info.offset.x > 60) go(-1);
+        if (info.offset.x < -60 || info.velocity.x < -400) go(1);
+        else if (info.offset.x > 60 || info.velocity.x > 400) go(-1);
+        else onChange(index);
       }}
     >
-      <SlideCard index={index} />
+      <SlideDeck pos={pos} index={index} reduce={reduce} />
     </motion.div>
   );
 }
