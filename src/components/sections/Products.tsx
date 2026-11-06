@@ -118,7 +118,7 @@ export function DesktopCopy({
 }) {
   const pointerEvents = useTransform(opacity, (v) => (v > 0.5 ? "auto" : "none"));
   const isWA = screen.id === "whatsapp";
-  const textX = screen.side === "left" ? (isWA ? "3.9%" : "2.5%") : "69.6%";
+  const textX = screen.side === "left" ? (isWA ? "3.125%" : "2.5%") : "69.6%"; // WA copy at x50 (Figma)
   const onLime = isWA;
 
   return (
@@ -129,12 +129,12 @@ export function DesktopCopy({
       style={{ opacity, pointerEvents }}
     >
       {/* Copy column + feature list in 1600×900 frame pixels, scaled with the stage (--stage-k). */}
-      <motion.div className="absolute top-[4.4%] w-[464px] origin-top-left" style={{ left: textX, y, scale: "var(--stage-k, 1)" }}>
+      <motion.div className={`absolute w-[464px] origin-top-left ${isWA ? "top-[5.44%]" : "top-[4.4%]"}`} style={{ left: textX, y, scale: "var(--stage-k, 1)" }}>
         <div className="relative w-full">
           <Tag>
             <TypeReveal text={screen.tag} active={active} />
           </Tag>
-          <h2 id={`${screen.id}-title`} className={`text-h3 mt-[54px] ${isWA ? "max-w-[320px]" : "max-w-[470px]"}`}>
+          <h2 id={`${screen.id}-title`} className={`text-h3 ${isWA ? "mt-[52px] max-w-[320px]" : "mt-[60px] max-w-[470px]"}`}>
             {screen.title.map((line) => (
               <span key={line} className="block">
                 {line}
@@ -159,9 +159,9 @@ export function DesktopCopy({
           </div>
         </div>
 
-        {/* Feature list (P2P / OTC): Figma y 593 / 693 / 795 → 40px bottom margin = 40px top (row 15) */}
+        {/* Feature list (P2P / OTC): Figma y 593 / 693 / 795 in the frame = 553 inside this column (top 40) → last item ends at 860, 40px bottom margin = 40px top (row 15) */}
         {screen.features ? (
-          <ul className="absolute left-0 top-[593px] flex w-[376px] flex-col gap-[35px]">
+          <ul className="absolute left-0 top-[553px] flex w-[376px] flex-col gap-[35px]">
             {screen.features.map((f) => (
               <li key={f.title} className="grid grid-cols-[62px_1fr] items-start gap-x-[2px]">
                 <FeatureIcon icon={f.icon} box={62} />

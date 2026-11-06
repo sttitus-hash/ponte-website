@@ -45,7 +45,7 @@ export function Faq() {
   return (
     <section id="faq" aria-labelledby="faq-title" className="relative z-[3] bg-black px-gutter pb-20 pt-[58px] text-cream lg:-mt-[100vh] lg:pb-[60px] lg:pt-[54px]">
       {/* Header */}
-      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_440px] lg:items-start lg:gap-x-10">
+      <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_493px] lg:items-start lg:gap-x-10">
         <RevealLines
           id="faq-title"
           as="h2"

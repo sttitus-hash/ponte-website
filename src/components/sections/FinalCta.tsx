@@ -81,7 +81,7 @@ export function FinalCta() {
                 <Reveal as="p" index={3} className="text-body-l mt-4 max-w-[428px] text-olive max-lg:text-body-s lg:mt-[30px]">
                   {finalCta.body}
                 </Reveal>
-                <Reveal index={4} className="mt-9 w-full max-w-[319px] lg:mt-[78px] lg:w-auto lg:max-w-none">
+                <Reveal index={4} className="mt-9 w-full max-w-[319px] lg:mt-[60px] lg:w-auto lg:max-w-none">
                   <Button href={links.app} variant="ink" className="max-lg:w-full max-lg:justify-between">
                     {finalCta.cta}
                   </Button>
@@ -91,7 +91,7 @@ export function FinalCta() {
               {/* Mobile: room for the routes drawing under the button (Figma 9710:31488) */}
               <div aria-hidden="true" className="h-[300px] lg:hidden" />
 
-              <p className="text-mono-16 text-center text-grey-mid lg:absolute lg:inset-x-0 lg:bottom-[5.5%] lg:mt-0">{finalCta.caption}</p>
+              <p className="text-mono-16 text-center text-grey-mid lg:absolute lg:inset-x-0 lg:bottom-[4.1%] lg:mt-0">{finalCta.caption}</p>
             </motion.div>
           </div>
         </motion.div>

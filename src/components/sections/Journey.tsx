@@ -60,7 +60,8 @@ function metrics(W: number, H: number) {
   const p2p: Edges = { l: boxL + 0.333 * boxW, r: W + over, t: -over, b: H + over };
   const otc: Edges = { l: -over, r: boxL + 0.667 * boxW, t: -over, b: H + over };
   const full: Edges = { l: -over, r: W + over, t: -over, b: H + over };
-  const wa: Edges = { l: g, r: W - g, t: g, b: H - g };
+  // WhatsApp panel (23,22) 1553×854 in the 1600×900 frame
+  const wa: Edges = { l: boxL + 0.0144 * boxW, r: boxL + 0.985 * boxW, t: boxT + 0.0244 * boxH, b: boxT + 0.9733 * boxH };
   return { g, cw, boxW, boxH, boxL, boxT, about, p2p, otc, full, wa };
 }
 

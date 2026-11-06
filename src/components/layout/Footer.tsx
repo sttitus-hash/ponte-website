@@ -72,7 +72,7 @@ export function Footer() {
       <div className="relative px-2 pb-2 pt-0 lg:px-gutter lg:pb-10 lg:pt-6">
         <div className="relative rounded-panel border border-white/[0.06] bg-card px-5 pb-6 pt-[140px] lg:px-12 lg:pb-6 lg:pt-[59px]">
           {/* Top row: cut-out wordmark · headline (from the plate's centre) · CTA */}
-          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_1fr_auto] lg:items-start lg:gap-x-8">
+          <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[calc(50%-2px)_1fr_auto] lg:items-start lg:gap-x-0">
             <Reveal className="max-lg:absolute max-lg:left-5 max-lg:top-8">
               <BrandLogoLarge className="h-auto w-[240px] text-[#272727] lg:w-[402px]" />
             </Reveal>
@@ -84,7 +84,7 @@ export function Footer() {
             </Reveal>
           </div>
 
-          <hr className="my-10 border-divider lg:mb-10 lg:mt-[100px]" />
+          <hr className="my-10 border-divider lg:mb-10 lg:mt-[48px]" />
 
           <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-6">
             {columns.map((col) => (
