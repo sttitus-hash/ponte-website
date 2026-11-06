@@ -42,7 +42,7 @@ export function Chip({ children }: { children: ReactNode }) {
 /** Ink chip with a lime dot — Trust illustration tiles. */
 export function DotChip({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-[4px] bg-ink px-3 py-2 text-mono-12 tracking-[0.08em] text-cream-warm">
+    <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-[4px] bg-ink px-2.5 py-2 text-mono-12 text-[11px] text-cream-warm xl:px-3 xl:text-[12px]">
       <span aria-hidden="true" className="size-1.5 rounded-full bg-lime" />
       {children}
     </span>

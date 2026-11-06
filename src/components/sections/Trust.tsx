@@ -103,7 +103,7 @@ function TrustDesktop() {
         </motion.div>
 
         <motion.div
-          className="relative grid h-full grid-cols-[minmax(420px,537px)_1fr] grid-rows-[auto_1fr] gap-x-[clamp(48px,13.9vw,222px)] px-gutter pb-[clamp(48px,13vh,118px)] pt-[clamp(56px,13vh,118px)]"
+          className="relative grid h-full grid-cols-[minmax(360px,537px)_1fr] grid-rows-[auto_1fr] gap-x-[clamp(40px,calc(31.6vw-283.6px),222px)] px-gutter pb-[clamp(48px,13vh,118px)] pt-[clamp(56px,13vh,118px)]"
           style={{ opacity: exitO, y: exitY, scale: exitScale }}
         >
           <RevealLines
@@ -118,7 +118,7 @@ function TrustDesktop() {
               </span>,
             ]}
             label={trust.title.join(" ")}
-            className="text-h2 w-[660px] max-w-none"
+            className="text-h2 w-[min(660px,52vw)] max-w-none"
           />
           <Reveal as="p" index={2} className="text-body-l mt-1.5 max-w-[559px] text-white">
             {trust.body}
@@ -232,7 +232,7 @@ function PanelContent({ index, stacked, tone = "lime", active }: { index: number
         </div>
       </div>
 
-      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} active={active} className="w-[clamp(240px,45%,348px)] shrink-0 bg-lime-dim" />}
+      {stacked ? null : <Illustration kind={tab.illustration} chips={tab.chips} active={active} className="w-[clamp(256px,45%,348px)] shrink-0 bg-lime-dim" />}
     </div>
   );
 }

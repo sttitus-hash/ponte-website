@@ -186,9 +186,9 @@ function JourneyDesktop() {
   const mintDisplay = useTransform(p, (v) => (v >= 3.6 ? "none" : "flex"));
 
   /* ---- product layers --------------------------------------------------- */
-  const p2pVis = useTransform(p, (v) => (v < 4.1 ? seg(v, 3.6, 4.0, easeOut) : out(v, 4.25, 4.5)));
-  const otcVis = useTransform(p, (v) => (v < 5.1 ? seg(v, 4.6, 4.9, easeOut) : out(v, 5.2, 5.45)));
-  const waVis = useTransform(p, (v) => (v < 8 ? seg(v, 5.45, 5.75, easeOut) : out(v, 8.0, 8.8)));
+  const p2pVis = useTransform(p, (v) => (v < 4.1 ? seg(v, 3.45, 3.95, easeOut) : out(v, 4.25, 4.5)));
+  const otcVis = useTransform(p, (v) => (v < 5.1 ? seg(v, 4.45, 4.85, easeOut) : out(v, 5.2, 5.45)));
+  const waVis = useTransform(p, (v) => (v < 8 ? seg(v, 5.4, 5.75, easeOut) : out(v, 8.0, 8.8)));
   const p2pCopyO = useTransform(p, (v) => (v < 4.1 ? seg(v, 3.7, 4.0, easeOut) : out(v, 4.0, 4.25)));
   const p2pCopyY = useTransform(p2pCopyO, (o) => (1 - o) * 28);
   const otcCopyO = useTransform(p, (v) => (v < 5.1 ? seg(v, 4.8, 5.0, easeOut) : out(v, 5.0, 5.25)));

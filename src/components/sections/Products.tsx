@@ -65,10 +65,20 @@ export const screens: Screen[] = [
  * composition is scaled to 150 %; WhatsApp 9710:29994: 743-wide at (−165, −34), which puts the
  * photo's cut edge exactly on the panel's bottom) — CSV rows 43 / 45 / 46.
  */
-const mobileComp: Record<Screen["id"], { width: string; left: string; top: string }> = {
-  p2p: { width: "170%", left: "-36.7%", top: "1.6%" },
-  otc: { width: "150%", left: "-4%", top: "0.5%" },
-  whatsapp: { width: "198%", left: "-44%", top: "-9%" },
+const mobileComp: Record<Screen["id"], { width: number; left: number; top: number }> = {
+  p2p: { width: 1.7, left: -0.367, top: 0.016 },
+  otc: { width: 1.5, left: -0.04, top: 0.005 },
+  whatsapp: { width: 1.98, left: -0.44, top: -0.09 },
+};
+/** The 375px mobile frame scales up to 480px, then the band stays that size and centres (tablets). */
+const MW = "min(100vw, 480px)";
+const compStyle = (id: Screen["id"]) => {
+  const c = mobileComp[id];
+  return {
+    width: `calc(${c.width} * ${MW})`,
+    left: `calc(50% - ${MW} / 2 + ${c.left} * ${MW})`,
+    top: `calc(${c.top} * ${MW} * 372 / 375)`,
+  };
 };
 
 /* -------------------------------------------------------------------------- */
@@ -121,7 +131,9 @@ export function DesktopCopy({
       {/* Copy column + feature list in 1600×900 frame pixels, scaled with the stage (--stage-k). */}
       <motion.div className="absolute top-[4.4%] w-[464px] origin-top-left" style={{ left: textX, y, scale: "var(--stage-k, 1)" }}>
         <div className="relative w-full">
-          <Tag>{screen.tag}</Tag>
+          <Tag>
+            <TypeReveal text={screen.tag} active={active} />
+          </Tag>
           <h2 id={`${screen.id}-title`} className={`text-h3 mt-[54px] ${isWA ? "max-w-[320px]" : "max-w-[470px]"}`}>
             {screen.title.map((line) => (
               <span key={line} className="block">
@@ -363,7 +375,9 @@ function MobileScreen({ screen }: { screen: Screen }) {
     <section id={screen.id} aria-labelledby={`${screen.id}-m-title`} className="bg-black px-5 pb-16 pt-16 text-white">
       <RevealGroup>
         <Reveal>
-          <Tag>{screen.tag}</Tag>
+          <Tag>
+            <TypeReveal text={screen.tag} inView />
+          </Tag>
         </Reveal>
         <RevealLines as="h2" id={`${screen.id}-m-title`} lines={screen.title} className="text-h3 mt-[26px]" />
         <Reveal as="p" index={2} className="text-body-s mt-[10px] text-grey">
@@ -372,8 +386,8 @@ function MobileScreen({ screen }: { screen: Screen }) {
       </RevealGroup>
 
       {/* Lime image panel */}
-      <div ref={panelRef} className="relative -mx-5 mt-12 aspect-[375/372] overflow-hidden bg-lime">
-        <div className="absolute aspect-[16/9]" style={mobileComp[screen.id]}>
+      <div ref={panelRef} className="relative -mx-5 mt-12 overflow-hidden bg-lime" style={{ height: `calc(${MW} * 372 / 375)` }}>
+        <div className="absolute aspect-[16/9]" style={compStyle(screen.id)}>
           <Visual
             id={screen.id}
             mobile

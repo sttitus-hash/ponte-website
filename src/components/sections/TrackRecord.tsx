@@ -133,11 +133,12 @@ export function SlideDeck({ pos, index, reduce }: DeckProps) {
             current={i === index}
             className="flex flex-col-reverse items-start gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6"
           >
-            <p className="flex items-center gap-2 text-mono-16 text-moss">
+            <p className="flex min-w-0 items-center gap-2 text-mono-16 text-moss">
               <Marker color="bg-forest" />
               <TypeReveal text={s.caption} active={i === index} />
             </p>
-            <p className="text-dot-88 whitespace-nowrap text-[#333333] max-lg:text-[56px]">{s.figure}</p>
+            {/* Ponte Dot 88 at the 1600 frame → 5.5vw, so "LICENSED" fits the card on 1024–1440 laptops */}
+            <p className="text-dot-88 whitespace-nowrap text-[#333333] max-lg:text-[56px] lg:text-[clamp(2.5rem,5.5vw,5.5rem)]">{s.figure}</p>
           </TextLayer>
         ))}
       </div>

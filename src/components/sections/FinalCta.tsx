@@ -236,7 +236,7 @@ function MobileRoutes() {
     <motion.svg
       viewBox="0 360 359 260"
       aria-hidden="true"
-      className="absolute inset-x-0 bottom-[60px] w-full lg:hidden"
+      className="absolute bottom-[60px] left-1/2 w-full max-w-[360px] -translate-x-1/2 lg:hidden"
       initial={reduce ? false : "hidden"}
       whileInView="show"
       viewport={viewportOnce}
