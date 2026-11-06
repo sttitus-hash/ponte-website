@@ -43,6 +43,7 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
       };
       raf = requestAnimationFrame(loop);
       sequencer.attach(instance);
+      window.addEventListener("keydown", sequencer.onKeyDown, { capture: true });
       setLenis(instance);
       setSmooth(true);
     };
@@ -50,6 +51,7 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(raf);
       instance?.destroy();
       instance = null;
+      window.removeEventListener("keydown", sequencer.onKeyDown, { capture: true });
       sequencer.attach(null);
       setLenis(null);
       setSmooth(false);
@@ -79,13 +81,13 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
       if (!el) return;
       e.preventDefault();
       const top = id === "top" ? 0 : el.getBoundingClientRect().top + window.scrollY;
-      if (lenis) lenis.scrollTo(top, { duration: 1.2, easing: easeOutExpo, lock: true, force: true });
+      if (lenis) sequencer.scrollTo(top, 1.2, easeOutExpo);
       else window.scrollTo({ top, behavior: window.matchMedia(reduceQuery).matches ? "auto" : "smooth" });
       if (id !== "top") history.replaceState(null, "", `#${id}`);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [lenis]);
+  }, [lenis, sequencer]);
 
   return <ScrollContext.Provider value={{ lenis, sequencer, smooth }}>{children}</ScrollContext.Provider>;
 }

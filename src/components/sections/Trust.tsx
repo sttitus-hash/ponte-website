@@ -45,7 +45,7 @@ export function Trust() {
 function TrustDesktop() {
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
-  const { lenis } = useScrollDriver();
+  const { lenis, sequencer } = useScrollDriver();
   const [active, setActive] = useState(0);
   const [entered, setEntered] = useState(false);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
@@ -76,11 +76,11 @@ function TrustDesktop() {
       const el = ref.current;
       if (!el) return;
       const target = pageTop(el) + window.innerHeight * STEP_VH * (i + 1);
-      if (lenis) lenis.scrollTo(target, { duration: 1, easing: easeOutExpo, lock: true, force: true });
+      if (lenis) sequencer.scrollTo(target, 1, easeOutExpo);
       else window.scrollTo({ top: target, behavior: reduce ? "auto" : "smooth" });
       setActive(i);
     },
-    [lenis, reduce],
+    [lenis, sequencer, reduce],
   );
 
   return (
