@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { mountLightBridge, type LightBridgeHandle } from "@/lib/lightBridge";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
@@ -10,8 +10,10 @@ type Props = {
   className?: string;
   /** Uniform overrides (see LIGHT_BRIDGE_HERO). */
   params?: Record<string, number | string>;
-  /** Play the one-shot rise reveal on mount. */
-  reveal?: boolean;
+  /** Play the one-shot rise reveal on mount, or `"armed"`: stay dark until `rise` becomes true. */
+  reveal?: boolean | "armed";
+  /** With `reveal="armed"`: flips to true to start the rise. */
+  rise?: boolean;
   /** Poster shown before the first frame and when WebGL is unavailable. */
   poster?: string;
   posterClassName?: string;
@@ -27,6 +29,7 @@ export function LightBridge({
   className = "absolute inset-0",
   params,
   reveal = false,
+  rise = false,
   poster = "/images/rays-poster.png",
   posterClassName = "object-cover object-[50%_35%]",
   priority,
@@ -34,6 +37,12 @@ export function LightBridge({
   const reduce = useReducedMotion();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const handleRef = useRef<LightBridgeHandle | null>(null);
+  const riseRef = useRef(rise);
+  useEffect(() => {
+    riseRef.current = rise;
+    if (rise) handleRef.current?.rise();
+  }, [rise]);
 
   // Callback ref (with cleanup) rather than useEffect: it re-runs whenever React hands us a
   // new <canvas>, including after a hydration-mismatch recovery that swaps the DOM node.
@@ -51,6 +60,8 @@ export function LightBridge({
         return;
       }
       const h = handle;
+      handleRef.current = h;
+      if (riseRef.current) h.rise();
       let visible = false;
       const sync = () => h.setPlaying(visible && document.visibilityState === "visible");
       const io = new IntersectionObserver(
@@ -65,6 +76,7 @@ export function LightBridge({
       return () => {
         io.disconnect();
         document.removeEventListener("visibilitychange", sync);
+        handleRef.current = null;
         h.destroy();
       };
     },

@@ -1,9 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useScroll, useTransform } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Appstore, BrandLogo, BrandMark, ChevronSmall, Googleplay, Menu } from "@/components/ui/icons";
+import { Appstore, BrandLogo, BrandMark, Chevron, Close, Googleplay, Menu } from "@/components/ui/icons";
 import { Marker } from "@/components/ui/Primitives";
 import { useActiveSection } from "@/hooks/useActiveSection";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
@@ -31,6 +31,14 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const showCompact = y > COMPACT_AFTER && direction === "up";
+  // Full header stays pinned over the hero until the mockup slides over it, then fades out
+  // (designer note "Header & navigation"); after that the page scrolls without a header.
+  const { scrollY } = useScroll();
+  const fullOpacity = useTransform(scrollY, (v) => {
+    const vh = typeof window === "undefined" ? 900 : window.innerHeight;
+    return 1 - Math.min(1, Math.max(0, (v - vh * 0.18) / (vh * 0.3)));
+  });
+  const fullEvents = useTransform(fullOpacity, (o) => (o > 0.2 ? "auto" : "none"));
   const hideMobileBar = y > 80 && direction === "down" && !menuOpen;
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -40,7 +48,7 @@ export function Header() {
       {/* ------------------------------------------------------------------ */}
       {/* Desktop — full nav laid over the hero                               */}
       {/* ------------------------------------------------------------------ */}
-      <header className="absolute inset-x-0 top-0 z-40 hidden h-[91px] lg:block">
+      <motion.header className="fixed inset-x-0 top-0 z-40 hidden h-[91px] lg:block" style={{ opacity: fullOpacity, pointerEvents: fullEvents }}>
         <nav aria-label="Primary" className="relative flex h-full items-center">
           <a
             href="#top"
@@ -67,7 +75,7 @@ export function Header() {
             <Button href={links.app}>Launch App</Button>
           </div>
         </nav>
-      </header>
+      </motion.header>
 
       {/* ------------------------------------------------------------------ */}
       {/* Desktop — compact header (scroll up, after the hero)                */}
@@ -112,13 +120,23 @@ export function Header() {
                   );
                 })}
               </ul>
-              <a
+              <motion.a
                 href={links.app}
                 aria-label="Launch App"
-                className="relative flex size-9 items-center justify-center rounded-full bg-lime text-ink transition-transform duration-300 hover:scale-105"
+                className="relative flex size-9 items-center justify-center overflow-hidden rounded-full bg-lime text-ink"
+                initial="rest"
+                whileHover="hover"
+                animate="rest"
+                whileTap={{ scale: 0.95 }}
               >
-                <ChevronSmall className="h-3 w-[7px]" />
-              </a>
+                {/* chevron slides through on hover, as on the buttons; +1px for optical centring */}
+                <motion.span className="absolute flex translate-x-px" variants={{ hover: { x: 22 } }} transition={{ duration: 0.4, ease: ease.inOut }}>
+                  <Chevron className="h-[14px] w-[7px]" />
+                </motion.span>
+                <motion.span className="absolute flex translate-x-px" initial={{ x: -22 }} variants={{ rest: { x: -22 }, hover: { x: 0 } }} transition={{ duration: 0.4, ease: ease.inOut }}>
+                  <Chevron className="h-[14px] w-[7px]" />
+                </motion.span>
+              </motion.a>
             </nav>
           </motion.div>
         ) : null}
@@ -128,7 +146,7 @@ export function Header() {
       {/* Mobile — top bar + full-screen menu                                 */}
       {/* ------------------------------------------------------------------ */}
       <motion.header
-        className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 lg:hidden"
+        className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between bg-gradient-to-b from-black/80 to-transparent px-5 lg:hidden"
         animate={{ y: hideMobileBar ? -72 : 0 }}
         transition={{ duration: 0.4, ease: ease.out }}
       >
@@ -152,7 +170,7 @@ export function Header() {
               exit={{ rotate: 45, opacity: 0, scale: 0.8 }}
               transition={{ duration: 0.2, ease: ease.out }}
             >
-              {menuOpen ? <ChevronSmall className="h-3 w-[7px]" /> : <Menu className="size-[18px]" />}
+              {menuOpen ? <Close className="size-6" /> : <Menu className="size-[18px]" />}
             </motion.span>
           </AnimatePresence>
         </button>
@@ -169,43 +187,53 @@ function NavLink({
   href,
   active,
   small,
-  layoutId,
   children,
 }: {
   href: string;
   active: boolean;
   small?: boolean;
-  layoutId: string;
+  layoutId?: string;
   children: string;
 }) {
+  const [hover, setHover] = useState(false);
+  const reduce = useReducedMotion();
+  const show = active || hover;
+  const size = small ? 8 : 10;
   return (
-    <motion.a
+    <a
       href={href}
       aria-current={active ? "true" : undefined}
-      className={`group relative flex items-center gap-2 ${
-        small ? "text-mono-13" : "text-mono-16"
-      } ${active ? "text-lime" : "text-mint"} transition-colors duration-300 hover:text-lime`}
-      initial="rest"
-      whileHover="hover"
-      animate="rest"
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      className={`group relative flex items-center ${small ? "text-mono-13" : "text-mono-16"} ${active ? "text-lime" : "text-mint"} transition-colors duration-300 hover:text-lime`}
     >
-      {active ? (
-        <motion.span
-          layoutId={layoutId}
-          className="flex"
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        >
-          <motion.span
-            className="flex"
-            variants={{ rest: { scale: 1, rotate: 0 }, hover: { scale: 0.9, rotate: 90 } }}
-            transition={{ duration: 0.4, ease: ease.out }}
-          >
-            <Marker size={small ? 8 : 10} />
-          </motion.span>
-        </motion.span>
-      ) : null}
+      {/* The square shrinks away and re-appears next to the active (or hovered) item — it never travels. */}
+      <motion.span
+        aria-hidden="true"
+        className="flex items-center overflow-visible"
+        initial={false}
+        animate={{ width: show ? size + 8 : 0 }}
+        transition={{ duration: reduce ? 0 : 0.28, ease: ease.out }}
+      >
+        <AnimatePresence initial={false}>
+          {show ? (
+            <motion.span
+              key="sq"
+              className="flex"
+              initial={reduce ? { opacity: 0 } : { scale: 0.9, rotate: 90, opacity: 0 }}
+              animate={{ scale: 1, rotate: 0, opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { scale: 0, rotate: 45, opacity: 0, transition: { duration: 0.18 } }}
+              transition={{ duration: 0.3, ease: ease.out }}
+            >
+              <Marker size={size} />
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
+      </motion.span>
       <span className="pt-px">{children}</span>
-    </motion.a>
+    </a>
   );
 }
 
@@ -248,6 +276,7 @@ function MobileMenu({
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
+          data-lenis-prevent
           className="fixed inset-0 z-40 flex flex-col justify-between overflow-y-auto bg-black px-5 pb-8 pt-[116px] lg:hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

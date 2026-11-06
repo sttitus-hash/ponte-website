@@ -44,14 +44,8 @@
 @layer base {
   html {
     color-scheme: dark;
-    scroll-behavior: smooth;
+    /* anchors are driven by the scroll provider (Lenis on desktop) */
     -webkit-text-size-adjust: 100%;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
   }
 
   body {
@@ -173,12 +167,13 @@
   text-transform: uppercase;
 }
 
+/* Label style: Geist Mono 12, letter-spacing 2 % (designer QA rows 23 / 49 / 57 — not 2px) */
 @utility text-mono-12 {
   font-family: var(--font-mono);
   font-weight: 400;
   font-size: 0.75rem;
   line-height: 1.2;
-  letter-spacing: 0.17em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -232,7 +227,8 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Pattern tile (diagonal hairlines) used on the lime product panels
+   Pattern tile (diagonal hairlines) — removed from the product panels per designer QA
+   row 17; kept here in case it is wanted back
    --------------------------------------------------------------------------- */
 @utility bg-pattern-lines {
   background-image: repeating-linear-gradient(

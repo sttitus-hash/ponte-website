@@ -1,4 +1,7 @@
+"use client";
+
 import type { CSSProperties } from "react";
+import { motion, useTransform, type MotionValue } from "motion/react";
 import { quadMatrix, type Quad } from "@/lib/quad";
 
 /**
@@ -99,7 +102,26 @@ const SPECS: Record<GlassCardVariant, Spec> = {
 const MONO = "var(--font-mono)";
 const SG = "\"Space Grotesk\", var(--font-geist-sans), sans-serif";
 
-export function GlassCard({ variant, className = "" }: { variant: GlassCardVariant; className?: string }) {
+/** "250,000 USDT" → counts 0 → 250,000 while `count` runs 0‥1 (CSV row 16: optional counter on the figures). */
+function CountUp({ text, count, style }: { text: string; count: MotionValue<number>; style: CSSProperties }) {
+  const m = /^([\d,]+(?:\.\d+)?)(.*)$/.exec(text);
+  const target = m ? parseFloat(m[1].replace(/,/g, "")) : 0;
+  const decimals = m && m[1].includes(".") ? m[1].split(".")[1].length : 0;
+  const suffix = m ? m[2] : text;
+  const shown = useTransform(count, (c) => {
+    if (!m) return text;
+    const k = Math.min(1, Math.max(0, (c - 0.35) / 0.65));
+    const v = target * (1 - Math.pow(1 - k, 3));
+    return v.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+  });
+  return (
+    <motion.div className="absolute whitespace-nowrap" style={style}>
+      {shown}
+    </motion.div>
+  );
+}
+
+export function GlassCard({ variant, className = "", count }: { variant: GlassCardVariant; className?: string; count?: MotionValue<number> }) {
   const s = SPECS[variant];
   const k = s.w / LARGE.w; // 1 for the large card, 0.8224 for the small one
   const px = (n: number) => n * k;
@@ -180,9 +202,13 @@ export function GlassCard({ variant, className = "" }: { variant: GlassCardVaria
         <div className="absolute" style={{ left: px(20), top: px(90.1), fontSize: px(12), lineHeight: 1.4, color: "#8c8c8c", mixBlendMode: "multiply" }}>
           {s.sub}
         </div>
-        <div className="absolute whitespace-nowrap" style={{ left: px(20), top: px(111.1), fontSize: px(40), lineHeight: 1, letterSpacing: "-0.04em", color: "#000" }}>
-          {s.big}
-        </div>
+        {count ? (
+          <CountUp text={s.big} count={count} style={{ left: px(20), top: px(111.1), fontSize: px(40), lineHeight: 1, letterSpacing: "-0.04em", color: "#000" }} />
+        ) : (
+          <div className="absolute whitespace-nowrap" style={{ left: px(20), top: px(111.1), fontSize: px(40), lineHeight: 1, letterSpacing: "-0.04em", color: "#000" }}>
+            {s.big}
+          </div>
+        )}
         <div className="absolute" style={{ left: px(20), top: px(157.1), fontSize: px(14), lineHeight: 1.5, fontWeight: 300, color: "#8c8c8c", mixBlendMode: "multiply" }}>
           {s.note}
         </div>

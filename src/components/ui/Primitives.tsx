@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-/** Figma "Tag": forest pill, mint uppercase mono label, 40px tall, radius 2. */
+/** Figma "Tag": forest pill, mint uppercase mono label, 40px tall, radius 2 (mobile: 26px tall, 14px label — row 57). */
 export function Tag({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <span
-      className={`inline-flex h-10 items-center rounded-[2px] bg-forest px-[17px] text-mono-16 text-mint ${className}`}
+      className={`inline-flex h-[26px] items-center rounded-[2px] bg-forest px-[7px] text-mono-14 uppercase text-mint lg:h-10 lg:px-[17px] lg:text-mono-16 ${className}`}
     >
       {children}
     </span>

@@ -202,8 +202,9 @@ export const LIGHT_BRIDGE_HERO: Record<string, number | string> = {
 export type LightBridgeOptions = {
   /** Uniform overrides on top of the Hero preset. */
   params?: Record<string, number | string>;
-  /** Play the one-shot "rise" reveal when mounted (default: already lit). */
-  reveal?: boolean;
+  /** Play the one-shot "rise" reveal when mounted (default: already lit). `"armed"` keeps
+   *  the bridge dark until `rise()` is called on the handle. */
+  reveal?: boolean | "armed";
   /** Render one still frame (prefers-reduced-motion). */
   still?: boolean;
   /** Cap on devicePixelRatio (default 1.5). */
@@ -214,6 +215,8 @@ export type LightBridgeOptions = {
 export type LightBridgeHandle = {
   /** Pause/resume the render loop (offscreen / hidden tab). */
   setPlaying(playing: boolean): void;
+  /** Start the rise reveal now (for `reveal: "armed"`). */
+  rise(): void;
   destroy(): void;
 };
 
@@ -283,7 +286,9 @@ export function mountLightBridge(canvas: HTMLCanvasElement, opts: LightBridgeOpt
 
   // Time runs only while playing, so pausing offscreen never jumps the flow.
   let time = opts.still ? 6.5 : 0;
-  const riseStart = opts.reveal ? 0 : -1e4;
+  // reveal=true: rise from t=0; "armed": stay dark (riseT ≪ 0) until rise(); false: already lit
+  let riseStart = opts.reveal === "armed" ? 1e4 : opts.reveal ? 0 : -1e4;
+  if (opts.still) riseStart = -1e4;
   let playing = false;
   let raf = 0;
   let last = 0;
@@ -325,6 +330,12 @@ export function mountLightBridge(canvas: HTMLCanvasElement, opts: LightBridgeOpt
 
   return {
     setPlaying,
+    rise() {
+      if (riseStart === 1e4) {
+        riseStart = time;
+        if (!playing) draw();
+      }
+    },
     destroy() {
       cancelAnimationFrame(raf);
       ro.disconnect();
