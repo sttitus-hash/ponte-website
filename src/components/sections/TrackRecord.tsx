@@ -26,12 +26,12 @@ export function DrawnLoops() {
 }
 
 /** The mint card's content (tag, loops, headline, body). */
-export function AboutMint({ inView = true }: { inView?: boolean }) {
+export function AboutMint() {
   return (
     <>
       <div className="flex items-start justify-between">
         <Tag>
-          <TypeReveal text={trackRecord.tag} active={inView} />
+          <TypeReveal text={trackRecord.tag} inView />
         </Tag>
       </div>
       <div className="pointer-events-none absolute right-0 top-[27px] hidden w-[57%] text-forest lg:block">
@@ -210,6 +210,11 @@ export function TrackRecordMobile() {
         role="group"
         aria-roledescription="carousel"
         aria-label="Milestones"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") goTo(index + 1);
+          if (e.key === "ArrowLeft") goTo(index - 1);
+        }}
         data-lenis-prevent
       >
         {slides.map((s, i) => (
