@@ -22,6 +22,7 @@ export type KeyframeSource = {
 const EPS = 6; // px: within this distance a keyframe counts as "current"
 const MIN_DELTA = 2; // ignore sub-pixel trackpad noise
 const COOLDOWN_MS = 420; // after a tween: swallow trackpad inertia
+const COOLDOWN_EXTRA_MAX_MS = 240; // most the wheel cooldown stretches under frame starvation
 const GESTURE_GAP_MS = 140; // a pause longer than this (in input time) starts a new gesture
 const GROWTH = 1.5; // a delta this many times the previous one starts a new gesture (inertia only decays)
 const GROWTH_MIN = 6; // …and at least this many px larger, so tiny deltas never "grow"
@@ -29,6 +30,7 @@ const GROWTH_MIN = 6; // …and at least this many px larger, so tiny deltas nev
 export class Sequencer {
   private sources = new Map<symbol, KeyframeSource>();
   private busyUntil = 0;
+  private wheelBusyUntil = 0;
   private locked = false;
   private lenis: Lenis | null = null;
   private lastDelta = 0;
@@ -148,9 +150,11 @@ export class Sequencer {
   /** Clear the lock (with the inertia cooldown). */
   release() {
     this.locked = false;
+    this.busyUntil = performance.now() + COOLDOWN_MS;
     // Under frame starvation wheel events are coalesced and delivered late, so an inertia tail can
-    // outlive a fixed cooldown; stretch it by the frame interval the page is actually achieving.
-    this.busyUntil = performance.now() + COOLDOWN_MS + Math.max(0, this.lastFrameMs - 16) * 4;
+    // outlive the fixed cooldown; wheel input (only) waits a little longer, capped so a slow
+    // machine never feels stuck.
+    this.wheelBusyUntil = this.busyUntil + Math.min(COOLDOWN_EXTRA_MAX_MS, Math.max(0, this.lastFrameMs - 16) * 4);
   }
 
   /** The lock is only real while Lenis is animating a locked scroll; otherwise heal it. */
@@ -213,7 +217,7 @@ export class Sequencer {
     const newGesture = ts - this.lastTs > GESTURE_GAP_MS || !sameSign || grew;
     this.lastTs = ts;
     this.lastDelta = deltaY;
-    if (this.isLocked() || now < this.busyUntil) return swallow();
+    if (this.isLocked() || now < this.wheelBusyUntil) return swallow();
     if (mag < MIN_DELTA) return true;
     const dir: 1 | -1 = deltaY > 0 ? 1 : -1;
     const y = lenis.targetScroll;
