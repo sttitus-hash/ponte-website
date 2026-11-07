@@ -166,13 +166,19 @@ function TrustDesktop() {
                   >
                     {tab.title}
                   </span>
+                  {/* UI kit "Desktop/Icon Button · Outline" (9455:90–97): 32px, border #333333, chevron #8C8C8C;
+                      hover: an inner #333333 disc grows at inset 3 and the chevron turns #F4F2EC and moves +2px;
+                      pressed: disc at inset 5. 240ms cubic-bezier(.2,.8,.2,1). */}
                   <span
                     aria-hidden="true"
-                    className={`absolute bottom-5 right-6 flex size-8 items-center justify-center rounded-full border transition-all duration-500 ${
-                      isActive ? "border-lime-dim bg-lime-dim text-ink" : "border-[#333] text-grey group-hover:border-grey-dim"
+                    className={`absolute bottom-5 right-6 flex size-8 items-center justify-center rounded-full border transition-colors duration-500 ${
+                      isActive ? "border-lime-dim bg-lime-dim text-ink" : "border-[#333333] text-grey group-hover:text-cream group-active:text-cream"
                     }`}
                   >
-                    <ChevronSmall className="h-[10px] w-[6px]" />
+                    {!isActive ? (
+                      <span className="absolute inset-[3px] scale-0 rounded-full bg-[#333333] transition-[transform,inset] duration-[240ms] [transition-timing-function:cubic-bezier(.2,.8,.2,1)] group-hover:scale-100 group-active:inset-[5px] group-active:scale-100" />
+                    ) : null}
+                    <ChevronSmall className="relative h-[10px] w-[6px] transition-transform duration-[240ms] [transition-timing-function:cubic-bezier(.2,.8,.2,1)] group-hover:translate-x-0.5" />
                   </span>
                 </button>
               );
