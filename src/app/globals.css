@@ -1,23 +1,6 @@
 @import "tailwindcss";
 @import "./fonts.css";
 
-/*
- * Desktop breakpoint = wide AND a fine pointer (audit A-08). The pinned, gesture-stepped desktop
- * choreography depends on the sequencer, which only exists for mouse/trackpad input; a touch-only
- * device at 1024 px or wider (tablets, phones in "desktop site" mode) would otherwise get the
- * pinned layout with native touch scrolling and no stepping. Those devices get the stacked
- * mobile layouts instead, whatever their width. `data-touch` is set on <html> before paint by the
- * inline script in layout.tsx (coarse pointer only, unless the URL carries `?desktop=1` for
- * review). Keep in sync with `useIsDesktop`.
- */
-@custom-variant lg {
-  @media (min-width: 1024px) {
-    :root:not([data-touch]) & {
-      @slot;
-    }
-  }
-}
-
 /* ---------------------------------------------------------------------------
    Design tokens — lifted from the Figma Dev Handoff page (docs/figma-spec.md)
    --------------------------------------------------------------------------- */

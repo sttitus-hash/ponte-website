@@ -60,19 +60,12 @@ const hasAtAero = existsSync(join(process.cwd(), "public", "fonts", "AtAero-Reti
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistMono.variable} ${GeistSans.variable} h-full`}>
-      <head>
-        {hasAtAero ? (
-          // eslint-disable-next-line @next/next/no-css-tags -- licensed font CSS lives outside the bundle on purpose
+      {hasAtAero ? (
+        <head>
+          {/* eslint-disable-next-line @next/next/no-css-tags -- licensed font CSS lives outside the bundle on purpose */}
           <link rel="stylesheet" href="/fonts/at-aero.css" />
-        ) : null}
-        {/* Touch-only devices get the stacked layouts at any width (audit A-08); `?desktop=1` overrides for review. Runs before paint. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "if(matchMedia('(pointer: coarse)').matches&&!matchMedia('(pointer: fine)').matches&&!/[?&]desktop=1/.test(location.search))document.documentElement.setAttribute('data-touch','');",
-          }}
-        />
-      </head>
+        </head>
+      ) : null}
       <body className="flex min-h-full flex-col">
         <a
           href="#main"

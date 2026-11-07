@@ -181,6 +181,22 @@ export class Sequencer {
     };
   }
 
+  /**
+   * Nearest keyframe to `y` inside a registered range, or null outside the ranges. Used to settle a
+   * touch scroll on the desktop layout (audit A-08): the choreography is a pure function of scroll,
+   * so a finger can stop it anywhere; settling to the nearest rest state keeps every transition
+   * complete without ever trapping the reader (outside the ranges nothing happens).
+   */
+  nearest(y: number): number | null {
+    let best: number | null = null;
+    for (const r of this.sources.values()) {
+      const kf = r.keyframes();
+      if (kf.length < 2 || y < kf[0] || y > kf[kf.length - 1]) continue;
+      for (const k of kf) if (best === null || Math.abs(k - y) < Math.abs(best - y)) best = k;
+    }
+    return best;
+  }
+
   /** Next keyframe (and its range) in `dir` from scroll position `y`, or null to release. */
   next(y: number, dir: 1 | -1): number | null {
     const ranges = [...this.sources.values()].sort((a, b) => a.order - b.order);
