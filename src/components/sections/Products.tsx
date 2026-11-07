@@ -236,7 +236,7 @@ export function Visual({
     return (
       <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
         <motion.div className="absolute left-[43%] top-[8.9%] w-[54.4%]" style={phoneStyle}>
-          <Image src={asset("/images/p2p-phone.png")} alt="" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
+          <Image src={asset("/images/p2p-phone.png")} alt="" decoding="async" width={1766} height={1766} sizes="55vw" className="h-auto w-full" />
         </motion.div>
         <motion.div className="absolute left-[40.75%] top-[18%]" style={cardA}>
           <GlassCard variant="takers" count={e} />
@@ -254,9 +254,9 @@ export function Visual({
       <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
         <div className="rounded-panel absolute overflow-hidden" style={{ left: "-6.7%", top: "-3.4%", width: "73.4%", height: "105.6%" }}>
           <motion.div className="absolute left-[13.49%] top-[9.47%] w-[89.92%]" style={phoneStyle}>
-            <Image src={asset("/images/otc-hand.png")} alt="" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
+            <Image src={asset("/images/otc-hand.png")} alt="" decoding="async" width={2114} height={1738} sizes="66vw" className="h-auto w-full" />
             <div className="absolute left-[29.9%] top-[5.3%] w-[29.4%] overflow-hidden rounded-[8%]">
-              <Image src={asset("/images/otc-phone-screen.png")} alt="" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
+              <Image src={asset("/images/otc-phone-screen.png")} alt="" decoding="async" width={622} height={1392} sizes="20vw" className="h-auto w-full" />
             </div>
           </motion.div>
         </div>
@@ -272,7 +272,7 @@ export function Visual({
   return (
     <div ref={rootRef} aria-hidden="true" className="absolute inset-0">
       <motion.div className="absolute left-[33.4%] top-[13.2%] w-[46%]" style={phoneStyle}>
-        <Image src={asset("/images/wa-phone.png")} alt="" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
+        <Image src={asset("/images/wa-phone.png")} alt="" decoding="async" width={1472} height={1516} sizes="46vw" className="h-auto w-full" />
         {chatReveal ? <WhatsAppChat reveal={chatReveal} /> : null}
       </motion.div>
       <motion.div className="absolute left-[25.3%] top-[43.65%]" style={cardA}>

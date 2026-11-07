@@ -18,6 +18,12 @@ type Props = {
   poster?: string;
   posterClassName?: string;
   priority?: boolean;
+  /**
+   * Owner-reported visibility (audit A-06): an IntersectionObserver only knows the canvas is inside
+   * the viewport, not that another pinned section is covering it. Pass `false` while the owning
+   * section is faded out beneath another so the shader stops rendering.
+   */
+  active?: boolean;
 };
 
 /**
@@ -33,6 +39,7 @@ export function LightBridge({
   poster = "/images/rays-poster.png",
   posterClassName = "object-cover object-[50%_35%]",
   priority,
+  active = true,
 }: Props) {
   const reduce = useReducedMotion();
   const [ready, setReady] = useState(false);
@@ -43,6 +50,12 @@ export function LightBridge({
     riseRef.current = rise;
     if (rise) handleRef.current?.rise();
   }, [rise]);
+  const activeRef = useRef(active);
+  const syncRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    activeRef.current = active;
+    syncRef.current();
+  }, [active]);
 
   // Callback ref (with cleanup) rather than useEffect: it re-runs whenever React hands us a
   // new <canvas>, including after a hydration-mismatch recovery that swaps the DOM node.
@@ -63,7 +76,8 @@ export function LightBridge({
       handleRef.current = h;
       if (riseRef.current) h.rise();
       let visible = false;
-      const sync = () => h.setPlaying(visible && document.visibilityState === "visible");
+      const sync = () => h.setPlaying(visible && activeRef.current && document.visibilityState === "visible");
+      syncRef.current = sync;
       const io = new IntersectionObserver(
         (entries) => {
           visible = entries.some((e) => e.isIntersecting);
@@ -76,6 +90,7 @@ export function LightBridge({
       return () => {
         io.disconnect();
         document.removeEventListener("visibilitychange", sync);
+        syncRef.current = () => {};
         handleRef.current = null;
         h.destroy();
       };

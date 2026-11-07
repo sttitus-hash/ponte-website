@@ -148,10 +148,21 @@ function JourneyDesktop() {
   // Discrete state for ARIA / tab indexes
   const [aboutIndex, setAboutIndex] = useState(0);
   const [screen, setScreen] = useState(-1);
+  // Pre-decode the composition images one step before the first of them appears, so the first
+  // frame of the P2P transition does not pay for decoding (audit A-04). `visibility: hidden`
+  // subtrees are laid out but never painted, hence never decoded on their own.
+  const decoded = useRef(false);
   useMotionValueEvent(p, "change", (v) => {
-    const ai = Math.min(ABOUT_N - 1, Math.max(0, Math.round(v)));
+    if (!decoded.current && v > 2.5) {
+      decoded.current = true;
+      const imgs = ref.current?.querySelectorAll<HTMLImageElement>("img[decoding=async]") ?? [];
+      imgs.forEach((img) => img.decode().catch(() => {}));
+    }
+    // Discrete state flips late in each ramp (0.85), when the tween is decelerating, rather than at
+    // its midpoint: the typewriter labels then never compete with the busiest frames (audit A-07).
+    const ai = Math.min(ABOUT_N - 1, Math.max(0, Math.floor(v + 0.15)));
     if (ai !== aboutIndex) setAboutIndex(ai);
-    const sc = v < 3.65 ? -1 : v < 4.5 ? 0 : v < 5.5 ? 1 : 2;
+    const sc = v < 3.85 ? -1 : v < 4.85 ? 0 : v < 5.85 ? 1 : 2;
     if (sc !== screen) setScreen(sc);
   });
 
@@ -184,7 +195,7 @@ function JourneyDesktop() {
   const aboutContentY = useTransform(p, (v) => -24 * seg(v, 3.0, 3.4));
   const mintScale = useTransform(p, (v) => 1 - 0.1 * seg(v, 3.1, 3.6));
   const mintO = useTransform(p, (v) => out(v, 3.1, 3.6));
-  const mintDisplay = useTransform(p, (v) => (v >= 3.6 ? "none" : "flex"));
+  const mintVisibility = useTransform(p, (v) => (v >= 3.6 ? "hidden" : "visible"));
 
   /* ---- product layers --------------------------------------------------- */
   const p2pVis = useTransform(p, (v) => (v < 4.1 ? seg(v, 3.45, 3.95, easeOut) : out(v, 4.25, 4.5)));
@@ -198,6 +209,11 @@ function JourneyDesktop() {
   const waCopyY = useTransform(waCopyO, (o) => (1 - o) * 28);
   // WhatsApp: 0–3 steps reached (step 1 with the copy; 2 and 3 on the next keyframes)
   const waStep = useTransform(p, (v) => (v < 6 ? seg(v, 5.85, 6.0, easeOut) : v < 7 ? 1 + seg(v, 6.25, 6.7, easeOut) : 2 + seg(v, 7.25, 7.75, easeOut)));
+  // Stage backdrop (audit A-01): the stage must be opaque beneath its own content from the moment
+  // the lime card grows into a panel, because the next section is pulled up under the stage one
+  // step early (so the stage's exit fade can reveal it) and would otherwise show through the
+  // WhatsApp panel's margins at steps 7–8. Transparent while the About cards slide over the hero.
+  const backdropO = useTransform(p, (v) => seg(v, 3.0, 3.4));
   // exit: the whole stage scales to 0.9 and fades, revealing the next section beneath
   const stageScale = useTransform(p, (v) => 1 - 0.1 * seg(v, 8.0, 8.8));
   const stageO = useTransform(p, (v) => out(v, 8.0, 8.8));
@@ -239,11 +255,12 @@ function JourneyDesktop() {
         }}
         aria-label="About Ponte and products"
       >
+        <motion.div aria-hidden="true" className="absolute inset-0 bg-black" style={{ opacity: backdropO }} />
         {/* Mint card -------------------------------------------------------- */}
         <motion.section
           aria-labelledby="track-title"
           className="absolute flex flex-col justify-between overflow-hidden rounded-panel bg-mint p-[39px] text-black"
-          style={{ left: mintL, top: mintT, width: aboutW, height: aboutH, scale: mintScale, opacity: mintO, display: mintDisplay }}
+          style={{ left: mintL, top: mintT, width: aboutW, height: aboutH, scale: mintScale, opacity: mintO, visibility: mintVisibility }}
         >
           <AboutMint />
         </motion.section>
@@ -288,9 +305,11 @@ function CompositionLayer({
   parallax: Parameters<typeof Visual>[0]["parallax"];
   chatReveal?: MotionValue<number>;
 }) {
-  const display = useTransform(vis, (v) => (v <= 0 ? "none" : "block"));
+  // `visibility`, not `display`: the subtree stays laid out and its images stay decoded, so the
+  // first frame of a transition does not pay for decode + layout (audit A-04).
+  const visibility = useTransform(vis, (v) => (v <= 0 ? "hidden" : "visible"));
   return (
-    <motion.div className="absolute inset-0" style={{ display }} aria-hidden="true">
+    <motion.div className="absolute inset-0" style={{ visibility }} aria-hidden="true">
       <Visual id={id} entrance={vis} parallax={parallax} chatReveal={chatReveal} />
     </motion.div>
   );

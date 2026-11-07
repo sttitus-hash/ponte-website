@@ -7,13 +7,19 @@ import { Sequencer, easeOutExpo, type KeyframeSource } from "./sequencer";
 type Ctx = { lenis: Lenis | null; sequencer: Sequencer; smooth: boolean };
 const ScrollContext = createContext<Ctx | null>(null);
 
-const desktopQuery = "(min-width: 1024px) and (pointer: fine)";
+/**
+ * Input, not layout: the wheel sequencer runs whenever a fine pointer exists (`any-pointer`, so
+ * touchscreen laptops and desktops with a touch monitor keep it); layout is decided by width alone
+ * in useIsDesktop and the CSS breakpoints.
+ */
+const desktopQuery = "(min-width: 1024px) and (any-pointer: fine)";
 const reduceQuery = "(prefers-reduced-motion: reduce)";
 
 /**
- * Smooth scrolling (Lenis) + the trigger sequencer, desktop fine-pointer only; touch
- * devices and `prefers-reduced-motion` keep native scrolling. Anchor links are routed
- * through Lenis so they land on the right keyframe.
+ * Smooth scrolling (Lenis) + the trigger sequencer wherever a fine pointer exists; touch
+ * scrolling stays native everywhere (Lenis only smooths the wheel) and `prefers-reduced-motion`
+ * keeps native scrolling. On the desktop layout a touch scroll settles to the nearest keyframe
+ * once it stops. Anchor links are routed through Lenis so they land on the right keyframe.
  */
 export function ScrollProvider({ children }: { children: ReactNode }) {
   const [sequencer] = useState(() => new Sequencer());
@@ -38,6 +44,7 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
         prevent: (node) => node.hasAttribute("data-lenis-prevent"),
       });
       const loop = (t: number) => {
+        sequencer.onFrame(t);
         instance?.raf(t);
         raf = requestAnimationFrame(loop);
       };
@@ -63,12 +70,85 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
     sync();
     mqDesktop.addEventListener("change", sync);
     mqReduce.addEventListener("change", sync);
+    // Resize / zoom / orientation: keep the reader on the same keyframe (audit A-02). The keyframe
+    // is the one the page rested on before the burst of resize events; restored once layout settles.
+    let snap: ReturnType<Sequencer["snapshot"]> = null;
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const onResize = () => {
+      if (!snap) snap = sequencer.resting();
+      if (settle) clearTimeout(settle);
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      settle = setTimeout(() => {
+        settle = null;
+        // the viewport moved again while this restore was pending: the newer resize's own
+        // restore will handle it (a late restore against stale geometry must never scroll)
+        if (window.innerWidth !== vw || window.innerHeight !== vh) return;
+        instance?.resize();
+        sequencer.restore(snap);
+        snap = null;
+      }, 120);
+    };
+    window.addEventListener("resize", onResize);
     return () => {
       mqDesktop.removeEventListener("change", sync);
       mqReduce.removeEventListener("change", sync);
+      window.removeEventListener("resize", onResize);
+      if (settle) clearTimeout(settle);
       stop();
     };
   }, [sequencer]);
+
+  // Touch settle (audit A-08): after a touch-driven scroll stops inside a pinned range, settle to the
+  // nearest keyframe. Armed only by a touch gesture, so mouse, scrollbar and keyboard are untouched;
+  // the mobile layout registers no keyframes, so nothing happens there.
+  useEffect(() => {
+    if (window.matchMedia(reduceQuery).matches) return;
+    let armed = false;
+    let touching = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const settle = () => {
+      timer = null;
+      if (!armed || touching) return;
+      armed = false;
+      const y = window.scrollY;
+      const target = sequencer.nearest(y);
+      if (target === null || Math.abs(target - y) < 2) return;
+      if (lenis) sequencer.scrollTo(target, 0.6, easeOutExpo);
+      else window.scrollTo({ top: target, behavior: "smooth" });
+    };
+    const onTouchStart = () => {
+      touching = true;
+      armed = true;
+      if (timer) clearTimeout(timer);
+      // a finger takes over from a running wheel tween: stop it where it is (no fight, no lock)
+      if (lenis && lenis.isScrolling === "smooth") {
+        lenis.scrollTo(window.scrollY, { immediate: true, force: true });
+        sequencer.release();
+      }
+    };
+    const onTouchEnd = () => {
+      touching = false;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(settle, 160);
+    };
+    const onScroll = () => {
+      if (!armed) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(settle, 160);
+    };
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+      window.removeEventListener("scroll", onScroll);
+      if (timer) clearTimeout(timer);
+    };
+  }, [lenis, sequencer]);
 
   // Anchor navigation: same-page hashes go through Lenis (or native smooth scroll).
   useEffect(() => {
