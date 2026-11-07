@@ -51,41 +51,98 @@ export function AboutMint() {
 }
 
 /**
- * Milestone media: the four 3D objects. Prepared for the looping videos the design calls
- * for (CSV row 11): drop `/videos/about-<key>.mp4|webm` in and they play, muted, inline,
- * paused off-screen, with the PNG as poster and as the reduced-motion still. Until the
- * files are delivered the PNG renders alone.
+ * Milestone media: the designers' four looping 3D renders (CSV row 11), delivered as
+ * 1440×1440 H.264 and re-cut to the card's framing: cropped to the object with the same
+ * margins as the former stills, background matched to the card lime (#E8EE81) and a soft
+ * edge mask so the video rectangle never shows against the card. Served as WebM (VP9) with
+ * an MP4 fallback at 1024px for desktop and 640px for phones; `preload="none"` until the
+ * card is within a viewport of the screen, then only the current slide plays, muted, inline,
+ * looping. Reduced motion shows the poster frame instead.
  */
-const VIDEO_SOURCES: Partial<Record<string, { mp4?: string; webm?: string }>> = {};
+const VIDEO_BASE = "/videos/about-";
+const EDGE_MASK = "linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%)";
+const maskStyle: React.CSSProperties = {
+  WebkitMaskImage: EDGE_MASK,
+  maskImage: EDGE_MASK,
+  WebkitMaskComposite: "source-in",
+  maskComposite: "intersect",
+};
 
 function SlideMedia({ slide, current }: { slide: (typeof slides)[number]; current: boolean }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLVideoElement>(null);
-  const key = slide.image.replace(/^.*about-/, "").replace(/\.png$/, "");
-  const video = VIDEO_SOURCES[key];
+  // Hydration-safe: the server renders the poster; the client swaps in the video once it knows the viewport.
+  const [client, setClient] = useState<{ small: boolean } | null>(null);
+  const [near, setNear] = useState(false);
+  const mounted = client !== null;
+  const small = client?.small ?? false;
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setClient({ small: window.matchMedia("(max-width: 1023px)").matches }));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  // Load only when the card is within one viewport of the screen.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || near) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNear(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "100% 0px" },
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, [mounted, near]);
+
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    if (current && !reduce) v.play().catch(() => {});
+    if (current && near && !reduce) v.play().catch(() => {});
     else v.pause();
-  }, [current, reduce]);
-  if (!video || reduce) {
+  }, [current, near, reduce]);
+
+  if (!mounted || reduce) {
     return (
       <Image
-        src={asset(slide.image)}
+        src={asset(slide.poster)}
         alt={slide.alt}
-        width={848}
-        height={822}
+        width={1024}
+        height={1024}
         sizes="(min-width: 1024px) 424px, 60vw"
-        className="h-auto w-full select-none"
+        className="aspect-square h-auto w-full select-none"
+        style={maskStyle}
         draggable={false}
+        priority={false}
       />
     );
   }
+  const suffix = small ? "-640" : "";
   return (
-    <video ref={ref} className="h-auto w-full select-none" muted playsInline loop preload="metadata" poster={asset(slide.image)} aria-label={slide.alt}>
-      {video.webm ? <source src={asset(video.webm)} type="video/webm" /> : null}
-      {video.mp4 ? <source src={asset(video.mp4)} type="video/mp4" /> : null}
+    <video
+      ref={ref}
+      className="aspect-square h-auto w-full select-none"
+      style={maskStyle}
+      muted
+      playsInline
+      loop
+      autoPlay={false}
+      preload={near ? "auto" : "none"}
+      poster={asset(slide.poster)}
+      aria-label={slide.alt}
+      disablePictureInPicture
+      disableRemotePlayback
+    >
+      {near ? (
+        <>
+          <source src={asset(`${VIDEO_BASE}${slide.media}${suffix}.webm`)} type="video/webm" />
+          <source src={asset(`${VIDEO_BASE}${slide.media}${suffix}.mp4`)} type="video/mp4" />
+        </>
+      ) : null}
     </video>
   );
 }
@@ -116,7 +173,7 @@ export function SlideDeck({ pos, index, reduce }: DeckProps) {
       <div className="relative mx-auto flex w-[50%] max-w-[424px] flex-1 items-center justify-center py-5 lg:w-[64%] lg:py-6">
         <div className="grid w-full">
           {slides.map((s, i) => (
-            <ImageLayer key={s.image} pos={pos} i={i} reduce={reduce} current={i === index}>
+            <ImageLayer key={s.media} pos={pos} i={i} reduce={reduce} current={i === index}>
               <SlideMedia slide={s} current={i === index} />
             </ImageLayer>
           ))}
