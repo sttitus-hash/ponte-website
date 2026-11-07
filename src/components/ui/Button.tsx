@@ -23,10 +23,11 @@ type ButtonProps = {
   "aria-label"?: string;
 };
 
+/** Surface + hover / pressed states (UI kit "Button" Default / Hover / Pressed — row 1; exact kit fills to confirm). */
 const surface: Record<Variant, string> = {
-  lime: "bg-lime text-ink",
-  ink: "bg-ink text-lime",
-  pale: "bg-lime-pale text-ink",
+  lime: "bg-lime text-ink hover:bg-[#eef3a0] active:bg-lime-dim",
+  ink: "bg-ink text-lime hover:bg-[#1c1b1b] active:bg-black",
+  pale: "bg-lime-pale text-ink hover:bg-[#f6f8d2] active:bg-[#edf0c4]",
 };
 
 const circle: Record<Variant, string> = {
@@ -56,7 +57,7 @@ export function Button({
       {...rest}
       className={`group inline-flex h-[51px] shrink-0 items-center gap-4 rounded-full ${surface[variant]} ${
         chevron ? "pl-6 pr-0.5" : "px-9"
-      } text-mono-16 select-none ${className}`}
+      } text-mono-16 select-none transition-colors duration-300 ${className}`}
       whileHover="hover"
       whileTap={{ scale: 0.97 }}
       transition={springSoft}

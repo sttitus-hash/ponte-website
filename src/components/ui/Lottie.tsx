@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AnimationItem } from "lottie-web";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { asset } from "@/lib/asset";
@@ -19,6 +19,14 @@ type Props = {
   label?: string;
   /** Recolour every stroke/fill to `currentColor` (the files ship in ink #100F0F). */
   tint?: boolean;
+  /**
+   * Draw-once mode (CSV row 25): play from the first frame to `drawTo` (fraction of the loop,
+   * where the brand files are fully drawn) each time `drawKey` changes to a truthy value, then
+   * hold the drawn frame. No retract.
+   */
+  drawOnce?: boolean;
+  drawTo?: number;
+  drawKey?: number | boolean;
 };
 
 /**
@@ -34,10 +42,31 @@ export function Lottie({
   reducedMotionFrame = 0.5,
   label,
   tint = false,
+  drawOnce = false,
+  drawTo = 0.5,
+  drawKey,
 }: Props) {
   const animRef = useRef<AnimationItem | null>(null);
   const reduce = useReducedMotion();
   const [ready, setReady] = useState(false);
+  const drawKeyRef = useRef(drawKey);
+
+  // Draw-once trigger: play 0 → drawn frame, then stop (no retract).
+  useEffect(() => {
+    drawKeyRef.current = drawKey;
+    const anim = animRef.current;
+    if (!drawOnce || !anim) return;
+    if (!drawKey) {
+      anim.goToAndStop(0, true);
+      return;
+    }
+    const end = Math.round(drawTo * (anim.totalFrames - 1));
+    if (reduce) {
+      anim.goToAndStop(end, true);
+      return;
+    }
+    anim.playSegments([0, end], true);
+  }, [drawOnce, drawKey, drawTo, reduce, ready]);
 
   // Callback ref with cleanup: re-runs if React hands us a new node (hydration recovery).
   const attach = useCallback(
@@ -57,7 +86,7 @@ export function Lottie({
         const anim = lottie.loadAnimation({
           container,
           renderer: "svg",
-          loop,
+          loop: drawOnce ? false : loop,
           autoplay: false,
           animationData,
           rendererSettings: { preserveAspectRatio: "xMidYMid meet", progressiveLoad: true },
@@ -65,6 +94,12 @@ export function Lottie({
         animRef.current = anim;
         setReady(true);
 
+        if (drawOnce) {
+          // hold frame 0 (undrawn) until triggered; the draw effect takes over
+          const end = Math.round(drawTo * (anim.totalFrames - 1));
+          anim.goToAndStop(drawKeyRef.current ? end : 0, true);
+          return;
+        }
         if (reduce) {
           const frame =
             reducedMotionFrame === "last"
@@ -100,7 +135,7 @@ export function Lottie({
         animRef.current = null;
       };
     },
-    [src, loop, playWhenVisible, reduce, reducedMotionFrame],
+    [src, loop, playWhenVisible, reduce, reducedMotionFrame, drawOnce, drawTo],
   );
 
   return (

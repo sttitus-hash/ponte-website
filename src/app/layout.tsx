@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ScrollProvider } from "@/lib/scroll/ScrollProvider";
 import { site } from "@/lib/site";
 import "@fontsource/space-grotesk/300.css";
 import "@fontsource/space-grotesk/400.css";
@@ -71,11 +72,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <Header />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        <ScrollProvider>
+          <Header />
+          {/* `main` sits above the sticky footer so the final CTA scrolls up and reveals it */}
+          <main id="main" className="relative z-10 flex-1 bg-black">
+            {children}
+          </main>
+          <Footer />
+        </ScrollProvider>
       </body>
     </html>
   );
