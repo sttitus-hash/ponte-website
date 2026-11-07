@@ -22,21 +22,79 @@ export type KeyframeSource = {
 const EPS = 6; // px: within this distance a keyframe counts as "current"
 const MIN_DELTA = 2; // ignore sub-pixel trackpad noise
 const COOLDOWN_MS = 420; // after a tween: swallow trackpad inertia
-const GESTURE_GAP_MS = 140; // a pause longer than this starts a new gesture
-const GROWTH = 4; // a delta clearly larger than the previous one starts a new gesture (inertia only decays)
+const COOLDOWN_EXTRA_MAX_MS = 240; // most the wheel cooldown stretches under frame starvation
+const GESTURE_GAP_MS = 140; // a pause longer than this (in input time) starts a new gesture
+const GROWTH = 1.5; // a delta this many times the previous one starts a new gesture (inertia only decays)
+const GROWTH_MIN = 6; // …and at least this many px larger, so tiny deltas never "grow"
 
 export class Sequencer {
   private sources = new Map<symbol, KeyframeSource>();
   private busyUntil = 0;
+  private wheelBusyUntil = 0;
   private locked = false;
   private lenis: Lenis | null = null;
   private lastDelta = 0;
   private lastTs = -1e9;
   private tweenId = 0;
   private inGesture = false; // the current wheel stream already fired (or was released)
+  private lastFrameMs = 16; // observed frame interval, to stretch the cooldown under jank
+  private lastFrameTs = 0;
+  private rest: { order: number; index: number } | null = null; // keyframe the page last rested on
+  private restTs = 0;
 
   attach(lenis: Lenis | null) {
     this.lenis = lenis;
+  }
+
+  /** Called every animation frame by the scroll loop: tracks frame starvation (audit A-03). */
+  onFrame(now: number) {
+    if (this.lastFrameTs) this.lastFrameMs = Math.min(1000, now - this.lastFrameTs);
+    this.lastFrameTs = now;
+    // Remember the keyframe the page rests on (sampled 4×/s while idle) so a resize can restore it
+    // from the geometry *before* the resize — by the time the resize event fires, the keyframes
+    // already describe the new layout.
+    const lenis = this.lenis;
+    if (lenis && !lenis.isScrolling && now - this.restTs > 250) {
+      this.restTs = now;
+      this.rest = this.snapshot();
+    }
+  }
+
+  /**
+   * A resize (window, zoom, orientation) changes every keyframe's pixel offset while the scroll
+   * offset stays, which would leave the reader mid-transition or on another screen (audit A-02).
+   * Call `snapshot()` before layout changes and `restore()` after: the reader is kept on the same
+   * keyframe index of the same range.
+   */
+  /** The keyframe the page was resting on before the current layout change (see `onFrame`). */
+  resting() {
+    return this.rest;
+  }
+
+  snapshot(): { order: number; index: number } | null {
+    const lenis = this.lenis;
+    if (!lenis) return null;
+    const y = lenis.targetScroll;
+    for (const r of [...this.sources.values()].sort((a, b) => a.order - b.order)) {
+      const kf = r.keyframes();
+      if (kf.length < 2 || y < kf[0] - EPS || y > kf[kf.length - 1] + EPS) continue;
+      let index = 0;
+      for (let i = 0; i < kf.length; i++) if (Math.abs(kf[i] - y) < Math.abs(kf[index] - y)) index = i;
+      if (Math.abs(kf[index] - y) > EPS) continue; // mid-tween: nothing to pin
+      return { order: r.order, index };
+    }
+    return null;
+  }
+
+  restore(snap: { order: number; index: number } | null) {
+    const lenis = this.lenis;
+    if (!lenis || !snap) return;
+    const r = [...this.sources.values()].find((x) => x.order === snap.order);
+    if (!r) return;
+    const kf = r.keyframes();
+    const target = kf[Math.min(snap.index, kf.length - 1)];
+    if (target === undefined || Math.abs(target - lenis.targetScroll) <= EPS) return;
+    lenis.scrollTo(target, { immediate: true, force: true });
   }
 
   /** Keyboard: inside a registered range, Space / PageDown / ArrowDown (and the reverse keys) step one keyframe. */
@@ -93,6 +151,10 @@ export class Sequencer {
   release() {
     this.locked = false;
     this.busyUntil = performance.now() + COOLDOWN_MS;
+    // Under frame starvation wheel events are coalesced and delivered late, so an inertia tail can
+    // outlive the fixed cooldown; wheel input (only) waits a little longer, capped so a slow
+    // machine never feels stuck.
+    this.wheelBusyUntil = this.busyUntil + Math.min(COOLDOWN_EXTRA_MAX_MS, Math.max(0, this.lastFrameMs - 16) * 4);
   }
 
   /** The lock is only real while Lenis is animating a locked scroll; otherwise heal it. */
@@ -137,19 +199,25 @@ export class Sequencer {
     const lenis = this.lenis;
     if (!lenis || !event.type.includes("wheel")) return true;
     const now = performance.now();
+    // Input time, not delivery time: when the main thread stalls, a burst of wheel events is
+    // delivered late and close together, but their `timeStamp`s still show the real cadence.
+    const ts = event.timeStamp || now;
     const swallow = () => {
       if (event.cancelable) event.preventDefault();
       return false;
     };
     // Gesture detection: trackpad inertia is a stream of decaying deltas; only a pause or a
-    // growing delta (a finger starting to move again) counts as a new action, so one swipe
-    // and its whole inertia tail trigger exactly one transition.
+    // clearly growing delta (a finger starting to move again) counts as a new action, so one
+    // swipe and its whole inertia tail trigger exactly one transition. Growth is a ratio with a
+    // floor, because a stalled frame coalesces two or three inertia deltas into one bigger one.
     const mag = Math.abs(deltaY);
+    const prev = Math.abs(this.lastDelta);
     const sameSign = Math.sign(deltaY) === Math.sign(this.lastDelta);
-    const newGesture = now - this.lastTs > GESTURE_GAP_MS || !sameSign || mag > Math.abs(this.lastDelta) + GROWTH;
-    this.lastTs = now;
+    const grew = mag > Math.max(prev * GROWTH, prev + GROWTH_MIN);
+    const newGesture = ts - this.lastTs > GESTURE_GAP_MS || !sameSign || grew;
+    this.lastTs = ts;
     this.lastDelta = deltaY;
-    if (this.isLocked() || now < this.busyUntil) return swallow();
+    if (this.isLocked() || now < this.wheelBusyUntil) return swallow();
     if (mag < MIN_DELTA) return true;
     const dir: 1 | -1 = deltaY > 0 ? 1 : -1;
     const y = lenis.targetScroll;

@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { motion, useScroll, useTransform } from "motion/react";
-import { useRef } from "react";
+import { motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Appstore, Googleplay } from "@/components/ui/icons";
 import { Reveal, RevealLines } from "@/components/ui/Reveal";
@@ -60,6 +60,11 @@ function HeroDesktop() {
   const deviceScale = useTransform(scrollYProgress, [0, A], [1, reduce ? 1 : 1.08]);
   // Cover: the About cards slide over; once they cover 50 % the mockup and gradient fade out
   const heroOpacity = useTransform(scrollYProgress, [A + (1 - A) * 0.5, A + (1 - A) * 0.9], [1, 0]);
+  const [shown, setShown] = useState(true); // shader stops once the About cards have covered the hero (audit A-06)
+  useMotionValueEvent(heroOpacity, "change", (v) => {
+    const s = v > 0.02;
+    if (s !== shown) setShown(s);
+  });
 
   return (
     <section
@@ -72,7 +77,7 @@ function HeroDesktop() {
       <motion.div className="sticky top-0 h-screen overflow-hidden" style={{ opacity: heroOpacity }}>
         {/* Backdrop ------------------------------------------------------ */}
         <motion.div aria-hidden="true" className="absolute inset-x-0 top-0 h-[150%] will-change-transform" style={{ y: bgY }}>
-          <LightBridge className="absolute inset-0" priority reveal params={SHADER_DESKTOP} />
+          <LightBridge className="absolute inset-0" priority reveal active={shown} params={SHADER_DESKTOP} />
         </motion.div>
 
         {/* Copy ---------------------------------------------------------- */}
