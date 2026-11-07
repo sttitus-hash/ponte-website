@@ -38,6 +38,7 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
         prevent: (node) => node.hasAttribute("data-lenis-prevent"),
       });
       const loop = (t: number) => {
+        sequencer.onFrame(t);
         instance?.raf(t);
         raf = requestAnimationFrame(loop);
       };
@@ -63,9 +64,26 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
     sync();
     mqDesktop.addEventListener("change", sync);
     mqReduce.addEventListener("change", sync);
+    // Resize / zoom / orientation: keep the reader on the same keyframe (audit A-02). The keyframe
+    // is the one the page rested on before the burst of resize events; restored once layout settles.
+    let snap: ReturnType<Sequencer["snapshot"]> = null;
+    let settle: ReturnType<typeof setTimeout> | null = null;
+    const onResize = () => {
+      if (!snap) snap = sequencer.resting();
+      if (settle) clearTimeout(settle);
+      settle = setTimeout(() => {
+        instance?.resize();
+        sequencer.restore(snap);
+        snap = null;
+        settle = null;
+      }, 120);
+    };
+    window.addEventListener("resize", onResize);
     return () => {
       mqDesktop.removeEventListener("change", sync);
       mqReduce.removeEventListener("change", sync);
+      window.removeEventListener("resize", onResize);
+      if (settle) clearTimeout(settle);
       stop();
     };
   }, [sequencer]);

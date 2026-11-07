@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronSmall } from "@/components/ui/icons";
 import { LightBridge } from "@/components/ui/LightBridge";
 import { Lottie } from "@/components/ui/Lottie";
@@ -48,6 +48,7 @@ function TrustDesktop() {
   const { lenis, sequencer } = useScrollDriver();
   const [active, setActive] = useState(0);
   const [entered, setEntered] = useState(false);
+  const [shown, setShown] = useState(true); // false once the section has faded out beneath Our story
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
   const p = useTransform(scrollYProgress, (v) => (reduce ? Math.round(v * STEPS) : v * STEPS));
@@ -62,6 +63,10 @@ function TrustDesktop() {
   const exitO = useTransform(p, (v) => 1 - Math.min(1, Math.max(0, (v - 4) / 0.8)));
   const exitY = useTransform(p, (v) => -24 * Math.min(1, Math.max(0, (v - 4) / 0.8)));
   const exitScale = useTransform(p, (v) => 1 - 0.04 * Math.min(1, Math.max(0, (v - 4) / 0.8)));
+  useMotionValueEvent(exitO, "change", (v) => {
+    const s = v > 0.02;
+    if (s !== shown) setShown(s);
+  });
 
   useKeyframes(2, () => {
     const el = ref.current;
@@ -96,7 +101,7 @@ function TrustDesktop() {
         {/* Backdrop: the Light Bridge turned on its side (Figma: rotated video frame); rises in on entry (row 26) */}
         <motion.div aria-hidden="true" className="absolute inset-0 bg-black" style={{ opacity: exitO }}>
           <div className="absolute left-1/2 top-1/2 h-[100vw] w-[100vh] min-h-[1200px] min-w-[1000px] -translate-x-1/2 -translate-y-1/2 rotate-90 scale-[1.15]">
-            <LightBridge className="absolute inset-0" posterClassName="object-cover object-[50%_35%]" reveal="armed" rise={entered} params={{ uRiseDur: 2.6 }} />
+            <LightBridge className="absolute inset-0" posterClassName="object-cover object-[50%_35%]" reveal="armed" rise={entered} active={entered && shown} params={{ uRiseDur: 2.6 }} />
           </div>
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.2)_45%,rgba(0,0,0,0.4)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-black" />
@@ -245,7 +250,7 @@ function PanelContent({ index, stacked, tone = "lime", active }: { index: number
 
 function Illustration({ kind, chips, active, className = "" }: { kind: string; chips: readonly string[]; active: boolean; className?: string }) {
   return (
-    <div className={`relative flex flex-col justify-between rounded-panel p-6 text-ink lg:min-h-[442px] ${className}`}>
+    <div data-illustration="" className={`relative flex flex-col justify-between rounded-panel p-6 text-ink lg:min-h-[442px] ${className}`}>
       <div className="flex flex-1 items-center justify-center py-2">
         {/* Official Lottie line drawings: draw 0 → 100 % when the tab activates (row 25) */}
         <Lottie src={LOTTIE[kind] ?? LOTTIE.rings} className="h-[240px] w-full max-w-[300px] lg:h-[262px]" drawOnce drawKey={active} />
@@ -304,18 +309,41 @@ function TrustMobile() {
   );
 }
 
+/**
+ * The line drawing draws when the illustration itself is mostly on screen and draws again on
+ * every re-entry — the same semantics as the desktop tab activation. (Audit A-12: triggering on
+ * 25 % of the card and only once meant the 5.5 s draw mostly ran below the fold, so phones saw a
+ * static drawing.)
+ */
 function MobileCard({ index, reduce }: { index: number; reduce: boolean }) {
-  const [seen, setSeen] = useState(false);
+  const ref = useRef<HTMLLIElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  useEffect(() => {
+    const target = ref.current?.querySelector("[data-illustration]");
+    if (!target) return;
+    // hysteresis: draw once 60 % of the illustration is visible, reset only when it has mostly left
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.intersectionRatio >= 0.6) setDrawing(true);
+          else if (e.intersectionRatio <= 0.2) setDrawing(false);
+        }
+      },
+      { threshold: [0.2, 0.6] },
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, []);
   return (
     <motion.li
+      ref={ref}
       className={`on-lime relative overflow-hidden rounded-panel text-ink ${index % 2 ? "bg-mint" : "bg-lime"}`}
       initial={reduce ? false : { opacity: 0, scale: 0.95 }}
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={viewportOnce}
-      onViewportEnter={() => setSeen(true)}
       transition={{ duration: 0.7, ease: ease.out }}
     >
-      <PanelContent index={index} stacked tone={index % 2 ? "mint" : "lime"} active={seen} />
+      <PanelContent index={index} stacked tone={index % 2 ? "mint" : "lime"} active={drawing} />
     </motion.li>
   );
 }
