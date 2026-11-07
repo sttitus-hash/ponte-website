@@ -26,7 +26,7 @@ export function PerfProbe() {
 
   useEffect(() => {
     if (!new URLSearchParams(location.search).has("perf")) return;
-    setOn(true);
+    const show = requestAnimationFrame(() => setOn(true));
     const t0 = performance.now();
     const frames: [number, number][] = []; // [scrollY, dt]
     const longs: number[] = [];
@@ -93,6 +93,7 @@ export function PerfProbe() {
     }, 500);
     (window as unknown as { __perfReport?: () => Report }).__perfReport = build;
     return () => {
+      cancelAnimationFrame(show);
       cancelAnimationFrame(raf);
       po.disconnect();
       clearInterval(tick);
