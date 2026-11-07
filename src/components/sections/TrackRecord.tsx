@@ -12,6 +12,7 @@ import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useImageLayer, useTextLayer } from "@/hooks/useSlideDeck";
 import { Lottie } from "@/components/ui/Lottie";
 import { asset } from "@/lib/asset";
+import { useScrollDriver } from "@/lib/scroll/ScrollProvider";
 
 export const slides = trackRecord.slides;
 export const N = slides.length;
@@ -78,7 +79,8 @@ function SlideMedia({ slide, current }: { slide: (typeof slides)[number]; curren
   const small = client?.small ?? false;
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => setClient({ small: window.matchMedia("(max-width: 1023px)").matches }));
+    // 640² is enough for the 424px card at DPR 1; 1024² serves phones at DPR 3 and Retina desktops
+    const id = requestAnimationFrame(() => setClient({ small: window.matchMedia("(max-width: 1023px)").matches ? window.devicePixelRatio < 2.5 : window.devicePixelRatio < 1.5 }));
     return () => cancelAnimationFrame(id);
   }, []);
 
@@ -99,12 +101,34 @@ function SlideMedia({ slide, current }: { slide: (typeof slides)[number]; curren
     return () => io.disconnect();
   }, [mounted, near]);
 
+  // Play only the current slide, and hold the loop while the page is tweening between keyframes
+  // (desktop Lenis): decoding during a transition costs frames on weak machines, and the card is
+  // moving anyway. Resumes 180 ms after the scroll settles.
+  const { lenis } = useScrollDriver();
+  const [settled, setSettled] = useState(true);
+  useEffect(() => {
+    if (!lenis) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = ({ velocity }: { velocity: number }) => {
+      if (Math.abs(velocity) > 0.5) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => setSettled(true), 180);
+        setSettled(false);
+      }
+    };
+    lenis.on("scroll", onScroll);
+    return () => {
+      lenis.off("scroll", onScroll);
+      if (timer) clearTimeout(timer);
+    };
+  }, [lenis]);
+
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    if (current && near && !reduce) v.play().catch(() => {});
+    if (current && near && settled && !reduce) v.play().catch(() => {});
     else v.pause();
-  }, [current, near, reduce]);
+  }, [current, near, settled, reduce]);
 
   if (!mounted || reduce) {
     return (
