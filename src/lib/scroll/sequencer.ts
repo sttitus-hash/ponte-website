@@ -43,18 +43,26 @@ export class Sequencer {
   private restTs = 0;
 
   attach(lenis: Lenis | null) {
+    this.lenis?.off("scroll", this.onLenisScroll);
     this.lenis = lenis;
+    this.rest = null;
+    lenis?.on("scroll", this.onLenisScroll);
   }
+
+  /** Any scroll invalidates the remembered resting keyframe until an idle frame re-samples it. */
+  private onLenisScroll = () => {
+    this.rest = null;
+  };
 
   /** Called every animation frame by the scroll loop: tracks frame starvation (audit A-03). */
   onFrame(now: number) {
     if (this.lastFrameTs) this.lastFrameMs = Math.min(1000, now - this.lastFrameTs);
     this.lastFrameTs = now;
-    // Remember the keyframe the page rests on (sampled 4×/s while idle) so a resize can restore it
-    // from the geometry *before* the resize — by the time the resize event fires, the keyframes
-    // already describe the new layout.
+    // Remember the keyframe the page rests on, sampled on every idle frame, so a resize can
+    // restore it from the geometry *before* the resize — by the time the resize event fires, the
+    // keyframes already describe the new layout. (A tween's own completion records it too.)
     const lenis = this.lenis;
-    if (lenis && !lenis.isScrolling && now - this.restTs > 250) {
+    if (lenis && !lenis.isScrolling) {
       this.restTs = now;
       this.rest = this.snapshot();
     }
@@ -143,6 +151,7 @@ export class Sequencer {
       onComplete: () => {
         if (token !== this.tweenId) return; // superseded
         this.release();
+        this.rest = this.snapshot(); // the keyframe just reached, recorded without waiting for a frame
       },
     });
   }
