@@ -208,7 +208,9 @@ function JourneyDesktop() {
   const waCopyO = useTransform(p, (v) => (v < 8 ? seg(v, 5.85, 6.0, easeOut) : out(v, 8.0, 8.8)));
   const waCopyY = useTransform(waCopyO, (o) => (1 - o) * 28);
   // WhatsApp: 0–3 steps reached (step 1 with the copy; 2 and 3 on the next keyframes)
-  const waStep = useTransform(p, (v) => (v < 6 ? seg(v, 5.85, 6.0, easeOut) : v < 7 ? 1 + seg(v, 6.25, 6.7, easeOut) : 2 + seg(v, 7.25, 7.75, easeOut)));
+  // steps 02 and 03 play across most of their scroll step (not a narrow slice of it), so the messages
+  // arrive at the same unhurried pace as the panel moves around them
+  const waStep = useTransform(p, (v) => (v < 6 ? seg(v, 5.85, 6.0, easeOut) : v < 7 ? 1 + seg(v, 6.1, 6.9, easeOut) : 2 + seg(v, 7.1, 7.9, easeOut)));
   // Stage backdrop (audit A-01): the stage must be opaque beneath its own content from the moment
   // the lime card grows into a panel, because the next section is pulled up under the stage one
   // step early (so the stage's exit fade can reveal it) and would otherwise show through the
