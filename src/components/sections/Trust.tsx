@@ -147,17 +147,11 @@ function TrustDesktop() {
                     if (e.key === "ArrowUp") jumpTo(Math.max(0, i - 1));
                   }}
                   className={`group relative grid h-[111px] grid-cols-[1fr_auto] grid-rows-[auto_1fr] overflow-hidden rounded-panel border px-6 pb-5 pt-[21px] text-left transition-colors duration-500 ${
-                    isActive ? "border-lime" : "border-card-stroke bg-card/90 backdrop-blur-sm hover:border-[#2c2c2c]"
+                    isActive ? "border-lime" : "border-card-stroke bg-card/90 hover:border-[#2c2c2c]"
                   }`}
                 >
-                  {/* lime fill expands from the left edge (row 24) */}
-                  <motion.span
-                    aria-hidden="true"
-                    className="absolute inset-0 origin-left bg-lime"
-                    initial={false}
-                    animate={{ scaleX: isActive ? 1 : 0 }}
-                    transition={{ duration: reduce ? 0 : 0.55, ease: ease.inOut }}
-                  />
+                  {/* lime fill expands from the left edge (row 24), driven by the deck position */}
+                  <TabFill pos={pos} i={i} />
                   <span className={`relative col-start-1 row-start-1 font-dot text-[36px] leading-none tracking-[-0.02em] transition-colors duration-500 ${isActive ? "text-ink" : "text-grey-dark"}`}>
                     0{i + 1}
                   </span>
@@ -200,6 +194,20 @@ function TrustDesktop() {
       </div>
     </section>
   );
+}
+
+/**
+ * A tab's lime fill as a function of the deck position, so it moves with the scroll (and with a
+ * scrollbar drag or a finger) instead of running on its own clock after the step: full while its
+ * panel is at rest, sweeping out as the deck leaves it and in as the deck arrives, crossing the
+ * neighbouring tab's fill at the midpoint, where the active tab (and its text colours) switch.
+ */
+function TabFill({ pos, i }: { pos: MotionValue<number>; i: number }) {
+  const scaleX = useTransform(pos, (v) => {
+    const t = Math.min(1, Math.max(0, 1 - (Math.abs(v - i) - 0.15) / 0.7));
+    return t * t * (3 - 2 * t); // smoothstep: eases in and out of rest like the tween around it
+  });
+  return <motion.span aria-hidden="true" className="absolute inset-0 origin-left bg-lime" style={{ scaleX }} />;
 }
 
 /** One stacked panel; fades / drifts with the deck position; its line drawing draws in on activation. */
