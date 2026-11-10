@@ -129,9 +129,14 @@ export class Sequencer {
     const lenis = this.lenis;
     if (!lenis) return;
     const distance = Math.abs(target - lenis.targetScroll);
-    // ~1 s for a full step, a little quicker for short hops; never sluggish
-    const duration = Math.min(1.15, Math.max(0.55, 0.55 + distance / (window.innerHeight * 1.6)));
-    this.scrollTo(target, duration, easeInOutQuart);
+    // One consistent pace for every step (~0.9 s for the standard 0.8-viewport step). The curve is a
+    // sine in-out rather than a steep quartic: with the quartic, the middle half of each step went by
+    // in 16 % of the tween, so any choreography placed mid-step flashed past in ~0.15 s while the
+    // ends crawled, which read as "fast in some places, slow in others". The sine spreads the
+    // travel (middle half in a third of the time), so a transition plays at a readable speed
+    // wherever it sits in its step.
+    const duration = Math.min(1.0, Math.max(0.7, 0.6 + distance / (window.innerHeight * 2.4)));
+    this.scrollTo(target, duration, easeInOutSine);
   }
 
   /**
@@ -258,5 +263,6 @@ export class Sequencer {
   };
 }
 
+export const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 export const easeInOutQuart = (t: number) => (t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2);
 export const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
