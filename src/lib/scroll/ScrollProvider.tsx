@@ -163,7 +163,10 @@ export function ScrollProvider({ children }: { children: ReactNode }) {
       const top = id === "top" ? 0 : el.getBoundingClientRect().top + window.scrollY;
       if (lenis) sequencer.scrollTo(top, 1.2, easeOutExpo);
       else window.scrollTo({ top, behavior: window.matchMedia(reduceQuery).matches ? "auto" : "smooth" });
-      if (id !== "top") history.replaceState(null, "", `#${id}`);
+      // Each section jump is its own history entry (audit A-09), so Back returns the reader to where
+      // they were (the browser restores the previous entry's scroll position) instead of leaving
+      // the site; a repeat click on the current section's link adds nothing.
+      if (id !== "top" && window.location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);

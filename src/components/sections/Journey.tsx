@@ -62,7 +62,7 @@ function metrics(W: number, H: number) {
   const full: Edges = { l: -over, r: W + over, t: -over, b: H + over };
   // WhatsApp panel (23,22) 1553×854 in the 1600×900 frame
   const wa: Edges = { l: boxL + 0.0144 * boxW, r: boxL + 0.985 * boxW, t: boxT + 0.0244 * boxH, b: boxT + 0.9733 * boxH };
-  return { g, cw, boxW, boxH, boxL, boxT, about, p2p, otc, full, wa };
+  return { W, H, over, g, cw, boxW, boxH, boxL, boxT, about, p2p, otc, full, wa };
 }
 
 /** Lime panel edges at deck position p. */
@@ -172,13 +172,20 @@ function JourneyDesktop() {
     const mm = metrics(w, h);
     return { m: mm, e: panelAt(v, mm) };
   });
-  const panelL = useTransform(geo, (g) => g.e.l);
-  const panelT = useTransform(geo, (g) => g.e.t);
-  const panelW = useTransform(geo, (g) => g.e.r - g.e.l);
-  const panelH = useTransform(geo, (g) => g.e.b - g.e.t);
-  // compositions live in box coordinates inside the moving panel
-  const compL = useTransform(geo, (g) => g.m.boxL - g.e.l);
-  const compT = useTransform(geo, (g) => g.m.boxT - g.e.t);
+  // The lime panel is one fixed full-bleed layer (the `full` edges) whose visible rectangle is a
+  // rounded clip-path, rather than a box whose left/top/width/height change on every frame of a
+  // transition: a geometry change re-lays-out the panel and every composition inside it each
+  // frame, a clip change only repaints (audit A-05). Its content no longer moves with the panel's
+  // origin, so the compositions and the About deck simply sit at their own screen positions.
+  // Edges snap to device pixels, as a laid-out box's do, so a resting panel's edges stay crisp.
+  const panelClip = useTransform(geo, ({ m, e }) => {
+    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+    const px = (v: number) => Math.round(v * dpr) / dpr;
+    return `inset(${px(e.t + m.over)}px ${px(m.W + m.over - e.r)}px ${px(m.H + m.over - e.b)}px ${px(e.l + m.over)}px round var(--radius-panel))`;
+  });
+  // compositions in box coordinates (constant: the panel layer itself never moves)
+  const compL = useTransform(geo, (g) => g.m.boxL + g.m.over);
+  const compT = useTransform(geo, (g) => g.m.boxT + g.m.over);
   const boxW = useTransform(geo, (g) => g.m.boxW);
   const boxH = useTransform(geo, (g) => g.m.boxH);
   const boxL = useTransform(geo, (g) => g.m.boxL);
@@ -186,6 +193,8 @@ function JourneyDesktop() {
   // About deck keeps the card's size inside the growing panel
   const aboutW = useTransform(geo, (g) => g.m.cw);
   const aboutH = useTransform(geo, (g) => g.m.about.b - g.m.about.t);
+  const deckL = useTransform(geo, (g) => g.m.about.l + g.m.over);
+  const deckT = useTransform(geo, (g) => g.m.about.t + g.m.over);
   const mintL = useTransform(geo, (g) => g.m.g);
   const mintT = useTransform(geo, (g) => g.m.g);
 
@@ -268,12 +277,10 @@ function JourneyDesktop() {
         </motion.section>
 
         {/* Lime card → panel ------------------------------------------------ */}
-        <motion.div
-          className="on-lime absolute overflow-hidden rounded-panel bg-lime text-ink will-change-[left,top,width,height]"
-          style={{ left: panelL, top: panelT, width: panelW, height: panelH }}
-        >
-          {/* About slide deck (card-sized) */}
-          <motion.div className="absolute left-0 top-0" style={{ width: aboutW, height: aboutH, opacity: aboutContentO, y: aboutContentY }} aria-hidden={screen >= 0}>
+        {/* (-inset-6 = the 24px bleed of the `full` edges in metrics()) */}
+        <motion.div className="on-lime absolute -inset-6 bg-lime text-ink" style={{ clipPath: panelClip }}>
+          {/* About slide deck (card-sized, at the lime card's position) */}
+          <motion.div className="absolute" style={{ left: deckL, top: deckT, width: aboutW, height: aboutH, opacity: aboutContentO, y: aboutContentY }} aria-hidden={screen >= 0}>
             <SlideDeck pos={deckPos} index={aboutIndex} reduce={reduce} />
           </motion.div>
 

@@ -59,14 +59,16 @@ const hasAtAero = existsSync(join(process.cwd(), "public", "fonts", "AtAero-Reti
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistMono.variable} ${GeistSans.variable} h-full`}>
+    // suppressHydrationWarning (one level, attributes only): browser extensions write attributes onto
+    // <html> and <body> before React hydrates, which React otherwise reports as a mismatch
+    <html lang="en" className={`${GeistMono.variable} ${GeistSans.variable} h-full`} suppressHydrationWarning>
       {hasAtAero ? (
         <head>
           {/* eslint-disable-next-line @next/next/no-css-tags -- licensed font CSS lives outside the bundle on purpose */}
           <link rel="stylesheet" href="/fonts/at-aero.css" />
         </head>
       ) : null}
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <a
           href="#main"
           className="sr-only z-[100] rounded-full bg-lime px-5 py-3 text-mono-16 text-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"

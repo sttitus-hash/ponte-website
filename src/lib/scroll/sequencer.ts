@@ -22,6 +22,11 @@ export type KeyframeSource = {
 const EPS = 6; // px: within this distance a keyframe counts as "current"
 const MIN_DELTA = 2; // ignore sub-pixel trackpad noise
 const COOLDOWN_MS = 420; // after a tween: swallow trackpad inertia
+const QUIET_COOLDOWN_MS = 90; // …unless no wheel input arrived near its end (a mouse click, a key): nothing to swallow
+const QUIET_MS = 200; // no wheel event for this long before the tween ends = no inertia tail in flight
+const NOTCH_MIN = 40; // a mouse-wheel click: an isolated integer delta of at least this many px (or a line delta)
+const QUEUE_WINDOW = 0.55; // a click in the last 55 % of a click-started tween queues the next step instead of being lost
+const NOTCH_GAP_MS = 300; // a click-started tween: its click followed at least this long a pause in wheel input
 const COOLDOWN_EXTRA_MAX_MS = 240; // most the wheel cooldown stretches under frame starvation
 const GESTURE_GAP_MS = 140; // a pause longer than this (in input time) starts a new gesture
 const GROWTH = 1.5; // a delta this many times the previous one starts a new gesture (inertia only decays)
@@ -41,6 +46,14 @@ export class Sequencer {
   private lastFrameTs = 0;
   private rest: { order: number; index: number } | null = null; // keyframe the page last rested on
   private restTs = 0;
+  private notch = false; // the current tween was started by a mouse-wheel click
+  private lastWheelAt = -1e9; // performance.now() of the last wheel event received
+  private streamed = false; // a continuous wheel stream (not discrete clicks) arrived during the current tween
+  private free = false; // the current wheel gesture is scrolling the page freely (outside the ranges)
+  private queued: 1 | -1 | 0 = 0; // one step queued by a click that arrived during a tween
+  private tweenDir: 1 | -1 | 0 = 0;
+  private tweenStart = 0;
+  private tweenDur = 0;
 
   attach(lenis: Lenis | null) {
     this.lenis?.off("scroll", this.onLenisScroll);
@@ -122,12 +135,22 @@ export class Sequencer {
     const target = this.next(lenis.targetScroll, dir);
     if (target === null) return; // native keyboard scrolling outside the ranges
     e.preventDefault();
+    this.notch = false;
     this.go(target);
   };
 
-  private go(target: number) {
+  private go(target: number, entering = false) {
     const lenis = this.lenis;
     if (!lenis) return;
+    const dir: 1 | -1 = target > lenis.targetScroll ? 1 : -1;
+    if (entering) {
+      // Entering a range from free scrolling: the page is already moving, so the landing only
+      // decelerates (ease-out from the current speed) instead of stopping and re-accelerating.
+      const travel = Math.abs(target - lenis.animatedScroll);
+      this.scrollTo(target, Math.min(0.8, Math.max(0.45, 0.35 + travel / (window.innerHeight * 1.5))), easeOutCubic);
+      this.tweenDir = dir;
+      return;
+    }
     const distance = Math.abs(target - lenis.targetScroll);
     // One consistent pace for every step (~0.9 s for the standard 0.8-viewport step). The curve is a
     // sine in-out rather than a steep quartic: with the quartic, the middle half of each step went by
@@ -137,6 +160,7 @@ export class Sequencer {
     // wherever it sits in its step.
     const duration = Math.min(1.0, Math.max(0.7, 0.6 + distance / (window.innerHeight * 2.4)));
     this.scrollTo(target, duration, easeInOutSine);
+    this.tweenDir = dir; // only keyframe steps accept a queued click (not anchors or tab jumps)
   }
 
   /**
@@ -147,7 +171,12 @@ export class Sequencer {
     const lenis = this.lenis;
     if (!lenis) return;
     this.locked = true;
+    this.queued = 0;
+    this.tweenDir = 0;
+    this.streamed = false;
     const token = ++this.tweenId;
+    this.tweenStart = performance.now();
+    this.tweenDur = duration * 1000;
     lenis.scrollTo(target, {
       duration,
       easing,
@@ -157,6 +186,13 @@ export class Sequencer {
         if (token !== this.tweenId) return; // superseded
         this.release();
         this.rest = this.snapshot(); // the keyframe just reached, recorded without waiting for a frame
+        // a mouse-wheel click that arrived during the tween plays the next step straight away
+        const q = this.queued;
+        this.queued = 0;
+        if (q && this.lenis) {
+          const next = this.next(this.lenis.targetScroll, q);
+          if (next !== null) this.go(next);
+        }
       },
     });
   }
@@ -164,11 +200,16 @@ export class Sequencer {
   /** Clear the lock (with the inertia cooldown). */
   release() {
     this.locked = false;
-    this.busyUntil = performance.now() + COOLDOWN_MS;
+    const now = performance.now();
+    // The cooldown exists to swallow a trackpad's inertia tail. If no wheel input arrived near the
+    // end of the tween (a mouse-wheel click, a key press), there is no tail in flight and the next
+    // click or key is honoured almost at once instead of being dropped for 0.4 s.
+    const quiet = now - this.lastWheelAt > QUIET_MS;
+    this.busyUntil = now + (quiet ? QUIET_COOLDOWN_MS : COOLDOWN_MS);
     // Under frame starvation wheel events are coalesced and delivered late, so an inertia tail can
     // outlive the fixed cooldown; wheel input (only) waits a little longer, capped so a slow
     // machine never feels stuck.
-    this.wheelBusyUntil = this.busyUntil + Math.min(COOLDOWN_EXTRA_MAX_MS, Math.max(0, this.lastFrameMs - 16) * 4);
+    this.wheelBusyUntil = this.busyUntil + (quiet ? 0 : Math.min(COOLDOWN_EXTRA_MAX_MS, Math.max(0, this.lastFrameMs - 16) * 4));
   }
 
   /** The lock is only real while Lenis is animating a locked scroll; otherwise heal it. */
@@ -222,6 +263,29 @@ export class Sequencer {
     return null;
   }
 
+  /** The registered keyframe within EPS of `y`, if any. */
+  private at(y: number): number | null {
+    for (const r of this.sources.values()) for (const k of r.keyframes()) if (Math.abs(k - y) <= EPS) return k;
+    return null;
+  }
+
+  /**
+   * Free scrolling that would cross into a registered range lands on that range's resting keyframe
+   * (its first keyframe going down, its last going up) instead of stopping part-way into the
+   * range's first transition, so the hand-over between free and stepped scrolling is seamless.
+   */
+  entry(y: number, projected: number, dir: 1 | -1): number | null {
+    let best: number | null = null;
+    for (const r of this.sources.values()) {
+      const kf = r.keyframes();
+      if (kf.length < 2) continue;
+      const k = dir > 0 ? kf[0] : kf[kf.length - 1];
+      const crosses = dir > 0 ? k > y + EPS && k <= projected : k < y - EPS && k >= projected;
+      if (crosses && (best === null || (dir > 0 ? k < best : k > best))) best = k;
+    }
+    return best;
+  }
+
   /**
    * Lenis `virtualScroll` hook. Returns false when the gesture was consumed.
    */
@@ -244,25 +308,67 @@ export class Sequencer {
     const prev = Math.abs(this.lastDelta);
     const sameSign = Math.sign(deltaY) === Math.sign(this.lastDelta);
     const grew = mag > Math.max(prev * GROWTH, prev + GROWTH_MIN);
-    const newGesture = ts - this.lastTs > GESTURE_GAP_MS || !sameSign || grew;
+    const gap = ts - this.lastTs;
+    const isolated = gap > GESTURE_GAP_MS;
+    const newGesture = isolated || !sameSign || grew;
     this.lastTs = ts;
     this.lastDelta = deltaY;
-    if (this.isLocked() || now < this.wheelBusyUntil) return swallow();
-    if (mag < MIN_DELTA) return true;
+    this.lastWheelAt = now;
+    const wheel = event as WheelEvent;
+    // A mouse-wheel click is one isolated delta of a fixed size (or a line delta); a trackpad sends
+    // a continuous stream of varying deltas. A click during the second half of a click-started
+    // tween is queued rather than dropped, so clicking at a steady pace steps through the page
+    // without waiting. (Isolated, by input timestamps: a stalled, coalesced inertia burst never
+    // qualifies.)
+    const isNotch = isolated && (wheel.deltaMode === 1 || (mag >= NOTCH_MIN && Number.isInteger(deltaY) && wheel.deltaX === 0));
+    // only a click after a real pause starts a click tween; a trackpad stream that merely hiccuped does not
+    const startsNotch = isNotch && gap > NOTCH_GAP_MS;
     const dir: 1 | -1 = deltaY > 0 ? 1 : -1;
+    if (this.isLocked()) {
+      if (!isolated) this.streamed = true; // an inertia tail is running: never queue on top of it
+      if (isNotch && this.notch && !this.streamed && dir === this.tweenDir && now - this.tweenStart > this.tweenDur * (1 - QUEUE_WINDOW)) this.queued = dir;
+      return swallow();
+    }
+    if (now < this.wheelBusyUntil) return swallow();
+    if (mag < MIN_DELTA) return true;
     const y = lenis.targetScroll;
     const target = this.next(y, dir);
+    if (target !== null && this.free && !newGesture) {
+      // a free-scrolling gesture has just reached a range's edge keyframe (within EPS): it lands
+      // there, exactly, and the rest of the gesture is absorbed instead of starting a step
+      this.free = false;
+      this.inGesture = true;
+      const edge = this.at(y);
+      if (edge !== null && Math.abs(edge - lenis.animatedScroll) > 0.5) {
+        this.notch = false;
+        this.go(edge, true);
+      }
+      return swallow();
+    }
+    this.free = false;
     if (target === null) {
+      // free scrolling: land exactly on a range's resting keyframe when this delta would cross it
+      // (Lenis has already applied wheelMultiplier and line-height scaling to deltaY)
+      const enter = this.entry(y, y + deltaY, dir);
+      if (enter !== null) {
+        this.notch = startsNotch;
+        this.inGesture = true;
+        this.go(enter, true);
+        return swallow();
+      }
       this.inGesture = false;
+      this.free = true;
       return true;
     }
     if (!newGesture && this.inGesture) return swallow();
+    this.notch = startsNotch;
     this.inGesture = true;
     this.go(target);
     return swallow();
   };
 }
 
+export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 export const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 export const easeInOutQuart = (t: number) => (t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2);
 export const easeOutExpo = (t: number) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
