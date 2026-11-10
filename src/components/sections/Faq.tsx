@@ -43,7 +43,7 @@ export function Faq() {
   };
 
   return (
-    <section id="faq" aria-labelledby="faq-title" className="relative z-[3] bg-black px-gutter pb-20 pt-[58px] text-cream lg:-mt-[100vh] lg:pb-[60px] lg:pt-[54px]">
+    <section id="faq" aria-labelledby="faq-title" className="relative z-[3] bg-black px-5 pb-20 lg:px-gutter pt-[58px] text-cream lg:-mt-[100vh] lg:pb-[60px] lg:pt-[54px]">
       {/* Header */}
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[1fr_493px] lg:items-start lg:gap-x-10">
         <RevealLines
