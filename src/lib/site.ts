@@ -35,7 +35,7 @@ export const links = {
   terms: env("NEXT_PUBLIC_TERMS_URL", "#"),
   privacy: env("NEXT_PUBLIC_PRIVACY_URL", "#"),
   riskDisclosure: env("NEXT_PUBLIC_RISK_DISCLOSURE_URL", "#"),
-  x: env("NEXT_PUBLIC_X_URL", "#"),
+  x: env("NEXT_PUBLIC_X_URL", "https://x.com/getponte"),
   telegram: env("NEXT_PUBLIC_TELEGRAM_URL", "#"),
 } as const;
 
